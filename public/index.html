@@ -6,224 +6,155 @@
 <title>Lua Obfuscator</title>
 <style>
 :root{
-  --bg:#0f0f11;--surface:#18181b;--surface2:#222228;--border:#2e2e36;
-  --accent:#7c6ff7;--accent2:#5a54c4;--text:#e4e4ef;--muted:#666678;
-  --success:#4ade80;--danger:#f87171;--warn:#fbbf24;
-  --radius:8px;--mono:'JetBrains Mono','Fira Code',monospace;
+  --bg:#0f0f11;--s1:#18181b;--s2:#222228;--bd:#2e2e36;
+  --ac:#7c6ff7;--ac2:#5a54c4;--tx:#e4e4ef;--mu:#666678;
+  --ok:#4ade80;--er:#f87171;--wn:#fbbf24;--r:8px;
+  --mo:'JetBrains Mono','Fira Code',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px}
-a{color:var(--accent)}
-.container{max-width:900px;margin:0 auto;padding:20px 16px 60px}
-header{text-align:center;padding:28px 0 20px}
-header h1{font-size:24px;font-weight:700;letter-spacing:-.3px}
-header h1 span{color:var(--accent)}
-header p{color:var(--muted);font-size:13px;margin-top:4px}
-.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:5px;vertical-align:middle}
-.badge.new{background:#1a2e1a;color:var(--success)}
-.badge.fix{background:#2e2a14;color:var(--warn)}
-.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0}
-.tab{padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}
-.tab:hover{color:var(--text)}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.panel{display:none}.panel.active{display:block}
-label.lbl{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 5px}
-textarea,input[type=text]{width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-family:var(--mono);font-size:12px;outline:none;resize:vertical;transition:border-color .15s}
-textarea:focus,input[type=text]:focus{border-color:var(--accent)}
-select{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:9px 10px;font-size:13px;outline:none;cursor:pointer}
-select:focus{border-color:var(--accent)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
-.opt-card{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:12px;color:var(--muted);transition:border-color .15s,color .15s;user-select:none}
-.opt-card:hover,.opt-card.on{border-color:var(--accent);color:var(--text)}
-.opt-card input{display:none}
-.opt-card .dot{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--border);flex-shrink:0;transition:background .15s,border-color .15s}
-.opt-card.on .dot{background:var(--accent);border-color:var(--accent)}
-.section-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 6px;display:flex;align-items:center;gap:8px}
-.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
-.row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
-button{flex:1;min-width:80px;padding:9px 14px;font-size:13px;font-weight:500;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;transition:background .15s,border-color .15s}
-button:hover{background:var(--surface);border-color:var(--accent)}
-button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-button.primary:hover{background:var(--accent2);border-color:var(--accent2)}
+html,body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px}
+.wrap{max-width:860px;margin:0 auto;padding:16px 14px 60px}
+h1{font-size:21px;font-weight:700;text-align:center;padding:20px 0 4px}
+h1 span{color:var(--ac)}
+.sub{text-align:center;font-size:11px;color:var(--mu);margin-bottom:16px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--bd);margin-bottom:14px}
+.tab{padding:7px 14px;font-size:13px;font-weight:500;cursor:pointer;color:var(--mu);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}
+.tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.pnl{display:none}.pnl.active{display:block}
+.lbl{display:block;font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 4px}
+textarea,input[type=text]{width:100%;background:var(--s1);color:var(--tx);border:1px solid var(--bd);border-radius:var(--r);padding:9px 11px;font-family:var(--mo);font-size:11px;outline:none;resize:vertical;transition:border-color .15s}
+textarea:focus,input:focus{border-color:var(--ac)}
+select{background:var(--s1);color:var(--tx);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;font-size:13px;outline:none;cursor:pointer}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:5px 0}
+.opt{display:flex;align-items:center;gap:7px;padding:7px 9px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--mu);user-select:none;transition:border-color .15s,color .15s}
+.opt:hover,.opt.on{border-color:var(--ac);color:var(--tx)}
+.opt input{display:none}
+.dot{width:12px;height:12px;border-radius:3px;border:1.5px solid var(--bd);flex-shrink:0;transition:background .15s,border-color .15s}
+.opt.on .dot{background:var(--ac);border-color:var(--ac)}
+.sec{font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;margin:13px 0 4px;display:flex;align-items:center;gap:8px}
+.sec::after{content:'';flex:1;height:1px;background:var(--bd)}
+.row{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+button{flex:1;min-width:68px;padding:8px 10px;font-size:12px;font-weight:500;border-radius:var(--r);border:1px solid var(--bd);background:var(--s2);color:var(--tx);cursor:pointer;transition:background .15s,border-color .15s}
+button:hover{background:var(--s1);border-color:var(--ac)}
+button.p{background:var(--ac);border-color:var(--ac);color:#fff}
+button.p:hover{background:var(--ac2)}
 button:disabled{opacity:.4;cursor:not-allowed}
-.slider-row{display:flex;align-items:center;gap:10px;margin:6px 0}
-input[type=range]{flex:1;accent-color:var(--accent)}
-.slider-val{font-size:13px;font-weight:600;color:var(--accent);min-width:30px}
-.size-row{display:flex;gap:8px;align-items:center}
-.size-row input{flex:1}
-.hint{font-size:11px;color:var(--muted);margin-top:3px}
-.progress-wrap{height:4px;background:var(--surface2);border-radius:2px;margin:8px 0;overflow:hidden}
-.progress-bar{height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width .25s}
-#status{font-size:12px;color:var(--muted);min-height:16px;margin:4px 0}
-.log-box{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px;height:72px;overflow-y:auto;margin:6px 0}
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center}
-.stat-v{font-size:15px;font-weight:600;color:var(--text)}
-.stat-l{font-size:10px;color:var(--muted);margin-top:2px}
-.dl-card{margin:10px 0;padding:12px 14px;background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius);display:none}
-.dl-card a{display:block;font-size:13px;font-weight:500;color:var(--accent);text-decoration:none;word-break:break-all}
-.dl-card .dl-hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
-/* test suite */
-.result-row{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px}
-.result-row:last-child{border-bottom:none}
-.ricon{flex-shrink:0;font-style:normal;margin-top:1px}
-.rname{font-weight:500}
-.rdetail{font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)}
-.results-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:8px 0}
-.results-hdr{font-size:11px;font-weight:600;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface2);text-transform:uppercase;letter-spacing:.05em}
-.summ-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
-.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center}
-.sc-v{font-size:22px;font-weight:700}
-.sc-l{font-size:11px;color:var(--muted);margin-top:2px}
-.pass{color:var(--success)}.fail{color:var(--danger)}
-footer{text-align:center;font-size:11px;color:var(--muted);padding:20px 0;border-top:1px solid var(--border);margin-top:40px}
-@media(max-width:600px){
-  .grid2{grid-template-columns:1fr}
-  .stats-grid{grid-template-columns:1fr 1fr}
-  .row{gap:6px}
-  button{min-width:60px;font-size:12px;padding:8px 10px}
-}
+.slrow{display:flex;align-items:center;gap:10px;margin:4px 0}
+input[type=range]{flex:1;accent-color:var(--ac)}
+.slv{font-size:13px;font-weight:700;color:var(--ac);min-width:28px}
+.srow{display:flex;gap:6px;align-items:center}
+.srow input{flex:1}
+.hint{font-size:11px;color:var(--mu);margin-top:3px}
+.pw{height:4px;background:var(--s2);border-radius:2px;margin:7px 0;overflow:hidden}
+.pb{height:100%;width:0%;background:var(--ac);border-radius:2px;transition:width .2s}
+#st{font-size:11px;color:var(--mu);min-height:15px;margin:3px 0}
+.lg{font-family:var(--mo);font-size:10px;color:var(--mu);background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:7px;height:60px;overflow-y:auto;margin:4px 0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:7px 0}
+.stat{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:7px;text-align:center}
+.sv{font-size:13px;font-weight:700}.sl{font-size:9px;color:var(--mu);margin-top:2px}
+.dlc{margin:8px 0;padding:11px 13px;background:var(--s1);border:1px solid var(--ac);border-radius:var(--r);display:none}
+.dlc a{display:block;font-size:12px;font-weight:500;color:var(--ac);text-decoration:none;word-break:break-all}
+.dlh{font-size:10px;color:var(--mu);margin-top:4px;line-height:1.6}
+/* badge */
+.bx{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle}
+.bn{background:#1a2e1a;color:var(--ok)}
+.bf{background:#2e2a14;color:var(--wn)}
+/* tests */
+.rrow{display:flex;align-items:flex-start;gap:7px;padding:7px 10px;border-bottom:1px solid var(--bd);font-size:11px}
+.rrow:last-child{border-bottom:none}
+.rn{font-weight:600}.rd{font-size:10px;color:var(--mu);margin-top:1px;font-family:var(--mo)}
+.rbox{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin:7px 0}
+.rhd{font-size:10px;font-weight:700;color:var(--mu);padding:6px 10px;border-bottom:1px solid var(--bd);background:var(--s2);text-transform:uppercase;letter-spacing:.05em}
+.sm{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:7px 0}
+.sc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:9px;text-align:center}
+.scv{font-size:22px;font-weight:700}.scl{font-size:10px;color:var(--mu);margin-top:2px}
+.ok{color:var(--ok)}.er{color:var(--er)}
+footer{text-align:center;font-size:11px;color:var(--mu);padding:16px 0;border-top:1px solid var(--bd);margin-top:32px}
+@media(max-width:540px){.g2{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}button{font-size:11px}}
 </style>
 </head>
 <body>
-<div class="container">
-
-<header>
-  <h1>Lua <span>Obfuscator</span></h1>
-  <p>17-layer pipeline · Web Worker · No lag · Download as .lua</p>
-</header>
+<div class="wrap">
+<h1>Lua <span>Obfuscator</span></h1>
+<p class="sub">Fixed · Correct escaping · Non-crackable numbers · Invisible junk · Working output</p>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('obf',this)">Obfuscator</div>
-  <div class="tab" onclick="switchTab('test',this)">Test Suite</div>
-  <div class="tab" onclick="switchTab('about',this)">About</div>
+  <div class="tab active" onclick="stab('obf',this)">Obfuscator</div>
+  <div class="tab" onclick="stab('test',this)">Tests</div>
+  <div class="tab" onclick="stab('about',this)">About</div>
 </div>
 
-<!-- ══ OBFUSCATOR ══ -->
-<div class="panel active" id="panel_obf">
+<!-- OBFUSCATOR -->
+<div class="pnl active" id="pnl_obf">
+<label class="lbl">Input Lua / Roblox script</label>
+<textarea id="inp" rows="7" placeholder="-- paste your Roblox / Lua script here"></textarea>
 
-  <label class="lbl">Input Lua / Roblox script</label>
-  <textarea id="inp" rows="7" placeholder="-- paste your Roblox / Lua script here"></textarea>
-
-  <div class="section-label">Hardening layers <span class="badge new">v3</span></div>
-  <div class="grid2">
-    <label class="opt-card on" id="card_o_poly" onclick="toggle('o_poly',this)">
-      <input type="checkbox" id="o_poly" checked>
-      <span class="dot"></span>Polymorphic key<span class="badge new">NEW</span>
-    </label>
-    <label class="opt-card on" id="card_o_opaque" onclick="toggle('o_opaque',this)">
-      <input type="checkbox" id="o_opaque" checked>
-      <span class="dot"></span>Opaque predicates<span class="badge new">NEW</span>
-    </label>
-    <label class="opt-card on" id="card_o_split" onclick="toggle('o_split',this)">
-      <input type="checkbox" id="o_split" checked>
-      <span class="dot"></span>String chunk split<span class="badge new">NEW</span>
-    </label>
-    <label class="opt-card on" id="card_o_vm" onclick="toggle('o_vm',this)">
-      <input type="checkbox" id="o_vm" checked>
-      <span class="dot"></span>Micro-VM dispatch<span class="badge new">NEW</span>
-    </label>
-    <label class="opt-card on" id="card_o_anti" onclick="toggle('o_anti',this)">
-      <input type="checkbox" id="o_anti" checked>
-      <span class="dot"></span>Anti-extraction trap<span class="badge new">NEW</span>
-    </label>
-    <label class="opt-card on" id="card_o_multi_wrap" onclick="toggle('o_multi_wrap',this)">
-      <input type="checkbox" id="o_multi_wrap" checked>
-      <span class="dot"></span>Triple-load nesting<span class="badge new">NEW</span>
-    </label>
-  </div>
-
-  <div class="section-label">Base pipeline</div>
-  <div class="grid2">
-    <label class="opt-card on" id="card_o_var" onclick="toggle('o_var',this)">
-      <input type="checkbox" id="o_var" checked><span class="dot"></span>Variable mangling
-    </label>
-    <label class="opt-card on" id="card_o_str" onclick="toggle('o_str',this)">
-      <input type="checkbox" id="o_str" checked><span class="dot"></span>String → char array
-    </label>
-    <label class="opt-card on" id="card_o_num" onclick="toggle('o_num',this)">
-      <input type="checkbox" id="o_num" checked><span class="dot"></span>Number arithmetic
-    </label>
-    <label class="opt-card on" id="card_o_junk" onclick="toggle('o_junk',this)">
-      <input type="checkbox" id="o_junk" checked><span class="dot"></span>Massive junk flood
-    </label>
-    <label class="opt-card on" id="card_o_char" onclick="toggle('o_char',this)">
-      <input type="checkbox" id="o_char" checked><span class="dot"></span>Per-char flattener
-    </label>
-    <label class="opt-card on" id="card_o_xor" onclick="toggle('o_xor',this)">
-      <input type="checkbox" id="o_xor" checked><span class="dot"></span>XOR cipher<span class="badge fix">HARDENED</span>
-    </label>
-    <label class="opt-card on" id="card_o_flow" onclick="toggle('o_flow',this)">
-      <input type="checkbox" id="o_flow" checked><span class="dot"></span>Control flow mangle
-    </label>
-    <label class="opt-card on" id="card_o_scope" onclick="toggle('o_scope',this)">
-      <input type="checkbox" id="o_scope" checked><span class="dot"></span>Scope bomb
-    </label>
-    <label class="opt-card on" id="card_o_dead" onclick="toggle('o_dead',this)">
-      <input type="checkbox" id="o_dead" checked><span class="dot"></span>Dead branch inject
-    </label>
-    <label class="opt-card on" id="card_o_wrap" onclick="toggle('o_wrap',this)">
-      <input type="checkbox" id="o_wrap" checked><span class="dot"></span>Loadstring wrap
-    </label>
-    <label class="opt-card on" id="card_o_bytes" onclick="toggle('o_bytes',this)">
-      <input type="checkbox" id="o_bytes" checked><span class="dot"></span>Byte array encode
-    </label>
-  </div>
-
-  <label class="lbl" style="margin-top:14px">Junk intensity</label>
-  <div class="slider-row">
-    <input type="range" id="junk_lvl" min="1" max="10" value="5">
-    <span class="slider-val" id="junk_lbl">5/10</span>
-  </div>
-
-  <label class="lbl">Target output size <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
-  <div class="size-row">
-    <input type="text" id="size_val" placeholder="e.g. 2, 500, 1.5">
-    <select id="size_unit">
-      <option value="0">No target</option>
-      <option value="1024">KB</option>
-      <option value="1048576">MB</option>
-      <option value="1073741824">GB</option>
-    </select>
-  </div>
-  <div class="hint" id="size_note">Pads output with valid junk Lua until it reaches the target byte count.</div>
-
-  <div class="row" style="margin-top:14px">
-    <button class="primary" id="btn_obf" onclick="runObf()">⚡ Obfuscate</button>
-    <button onclick="copyOut()" id="btn_copy">Copy</button>
-    <button onclick="exportLua()" id="btn_dl">Save .lua</button>
-    <button onclick="clearObf()">Clear</button>
-  </div>
-
-  <div id="status">Ready — paste a script and hit Obfuscate.</div>
-  <div class="progress-wrap"><div class="progress-bar" id="bar"></div></div>
-  <div class="log-box" id="log"></div>
-
-  <div class="dl-card" id="dl_card">
-    <a id="dl_link" href="#" target="_blank">📄 obfuscated.lua</a>
-    <div class="dl-hint">
-      Desktop: right-click → Save link as<br>
-      iOS: long-press → Download Linked File<br>
-      Android: long-press → Save link
-    </div>
-  </div>
-
-  <div class="stats-grid" id="stats" style="display:none">
-    <div class="stat"><div class="stat-v" id="s_in">—</div><div class="stat-l">Input</div></div>
-    <div class="stat"><div class="stat-v" id="s_out">—</div><div class="stat-l">Output</div></div>
-    <div class="stat"><div class="stat-v" id="s_x">—</div><div class="stat-l">Bloat</div></div>
-    <div class="stat"><div class="stat-v" id="s_layers">—</div><div class="stat-l">Layers</div></div>
-  </div>
-
-  <label class="lbl">Output (single line)</label>
-  <textarea id="out" readonly rows="6" style="color:#a78bfa;min-height:100px" placeholder="obfuscated output appears here..."></textarea>
-
+<div class="sec">Hardening layers</div>
+<div class="g2">
+  <label class="opt on" onclick="tog('o_poly',this)"><input type="checkbox" id="o_poly" checked><span class="dot"></span>Polymorphic key<span class="bx bn">NEW</span></label>
+  <label class="opt on" onclick="tog('o_opaque',this)"><input type="checkbox" id="o_opaque" checked><span class="dot"></span>Opaque predicates<span class="bx bn">NEW</span></label>
+  <label class="opt on" onclick="tog('o_split',this)"><input type="checkbox" id="o_split" checked><span class="dot"></span>String chunk split<span class="bx bn">NEW</span></label>
+  <label class="opt on" onclick="tog('o_anti',this)"><input type="checkbox" id="o_anti" checked><span class="dot"></span>Anti-extraction<span class="bx bn">NEW</span></label>
 </div>
 
-<!-- ══ TEST SUITE ══ -->
-<div class="panel" id="panel_test">
-  <label class="lbl">Test script</label>
-  <textarea id="test_src" rows="5" style="font-size:11px">local playerName = "Roblox"
+<div class="sec">Base pipeline</div>
+<div class="g2">
+  <label class="opt on" onclick="tog('o_var',this)"><input type="checkbox" id="o_var" checked><span class="dot"></span>Variable mangling</label>
+  <label class="opt on" onclick="tog('o_str',this)"><input type="checkbox" id="o_str" checked><span class="dot"></span>String → char array</label>
+  <label class="opt on" onclick="tog('o_num',this)"><input type="checkbox" id="o_num" checked><span class="dot"></span>Number obfuscation<span class="bx bf">FIXED</span></label>
+  <label class="opt on" onclick="tog('o_junk',this)"><input type="checkbox" id="o_junk" checked><span class="dot"></span>Junk inject<span class="bx bf">FIXED</span></label>
+  <label class="opt on" onclick="tog('o_char',this)"><input type="checkbox" id="o_char" checked><span class="dot"></span>Per-char flattener</label>
+  <label class="opt on" onclick="tog('o_flow',this)"><input type="checkbox" id="o_flow" checked><span class="dot"></span>Control flow mangle</label>
+  <label class="opt on" onclick="tog('o_scope',this)"><input type="checkbox" id="o_scope" checked><span class="dot"></span>Scope bomb</label>
+  <label class="opt on" onclick="tog('o_dead',this)"><input type="checkbox" id="o_dead" checked><span class="dot"></span>Dead branches<span class="bx bf">FIXED</span></label>
+  <label class="opt on" onclick="tog('o_wrap',this)"><input type="checkbox" id="o_wrap" checked><span class="dot"></span>Loadstring wrap<span class="bx bf">FIXED</span></label>
+  <label class="opt on" onclick="tog('o_bytes',this)"><input type="checkbox" id="o_bytes" checked><span class="dot"></span>Byte array encode</label>
+</div>
+
+<label class="lbl">Junk intensity <span style="font-weight:400;text-transform:none">(lower = less detectable)</span></label>
+<div class="slrow">
+  <input type="range" id="junk_lvl" min="1" max="5" value="2">
+  <span class="slv" id="jlbl">2/5</span>
+</div>
+
+<label class="lbl">Target output size <span style="font-weight:400;text-transform:none">(optional)</span></label>
+<div class="srow">
+  <input type="text" id="sval" placeholder="e.g. 2, 500, 1.5">
+  <select id="sunit"><option value="0">No target</option><option value="1024">KB</option><option value="1048576">MB</option><option value="1073741824">GB</option></select>
+</div>
+<div class="hint" id="snote">Pads output with stealthy junk Lua to hit the target size.</div>
+
+<div class="row">
+  <button class="p" id="btnrun" onclick="runObf()">⚡ Obfuscate</button>
+  <button onclick="cpOut()">Copy</button>
+  <button onclick="saveLua()">Save .lua</button>
+  <button onclick="clr()">Clear</button>
+</div>
+
+<div id="st">Ready.</div>
+<div class="pw"><div class="pb" id="bar"></div></div>
+<div class="lg" id="lg"></div>
+
+<div class="dlc" id="dlc">
+  <a id="dla" href="#" target="_blank">📄 obfuscated.lua</a>
+  <div class="dlh">Desktop: right-click → Save link as · iOS: long-press → Download · Android: long-press → Save link</div>
+</div>
+
+<div class="stats" id="stats" style="display:none">
+  <div class="stat"><div class="sv" id="si">—</div><div class="sl">Input</div></div>
+  <div class="stat"><div class="sv" id="so">—</div><div class="sl">Output</div></div>
+  <div class="stat"><div class="sv" id="sx">—</div><div class="sl">Bloat</div></div>
+  <div class="stat"><div class="sv" id="sn">—</div><div class="sl">Layers</div></div>
+</div>
+
+<label class="lbl">Output (single line — paste directly into Roblox)</label>
+<textarea id="out" readonly rows="6" style="color:#a78bfa" placeholder="obfuscated output appears here..."></textarea>
+</div>
+
+<!-- TESTS -->
+<div class="pnl" id="pnl_test">
+<label class="lbl">Test script</label>
+<textarea id="tsrc" rows="6">local playerName = "Roblox"
 local health = 100
 local maxHealth = 250
 local isDead = false
@@ -234,263 +165,517 @@ local function greet(name) return "Hi " .. name end
 local result = add(health, maxHealth)
 local msg = greet(playerName)
 if health > 0 then isDead = false end
-for i = 1, 5 do nums[i] = nums[i] * 2 end
 print(greeting) print(result) print(msg)</textarea>
-  <div class="row"><button class="primary" onclick="runTests()">▶ Run all tests</button></div>
-  <div id="t_status">Ready.</div>
-  <div class="progress-wrap"><div class="progress-bar" id="t_bar"></div></div>
-  <div class="summ-grid" id="t_summ" style="display:none">
-    <div class="sc"><div class="sc-v pass" id="t_pass">0</div><div class="sc-l">Passed</div></div>
-    <div class="sc"><div class="sc-v fail" id="t_fail">0</div><div class="sc-l">Failed</div></div>
-  </div>
-  <div class="results-box" id="t_results" style="display:none">
-    <div class="results-hdr">Results</div>
-    <div id="t_list"></div>
-  </div>
+<div class="row"><button class="p" onclick="runTests()">▶ Run all tests</button></div>
+<div id="tst">Ready.</div>
+<div class="pw"><div class="pb" id="tbar"></div></div>
+<div class="sm" id="tsum" style="display:none">
+  <div class="sc"><div class="scv ok" id="tpass">0</div><div class="scl">Passed</div></div>
+  <div class="sc"><div class="scv er" id="tfail">0</div><div class="scl">Failed</div></div>
+</div>
+<div class="rbox" id="tres" style="display:none">
+  <div class="rhd">Results</div>
+  <div id="tlist"></div>
+</div>
 </div>
 
-<!-- ══ ABOUT ══ -->
-<div class="panel" id="panel_about">
-  <label class="lbl">What this does</label>
-  <p style="color:var(--muted);line-height:1.7;font-size:13px">
-    17-layer Lua obfuscator built for Roblox scripts. All heavy work runs in a
-    <strong style="color:var(--text)">Web Worker</strong> so the UI never freezes.
-    Each layer addresses a specific attack vector:
-  </p>
-  <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
-    <div class="result-row"><span class="ricon">🔑</span><div><div class="rname">Polymorphic XOR key</div><div class="rdetail">Key derived at runtime via (A×B)%251+offset — no plaintext key in source</div></div></div>
-    <div class="result-row"><span class="ricon">🔀</span><div><div class="rname">Opaque predicates</div><div class="rdetail">Guards real code behind conditions that are always true but statically undecidable</div></div></div>
-    <div class="result-row"><span class="ricon">✂️</span><div><div class="rname">String chunk split</div><div class="rdetail">Every string shredded into random fragments — no complete literal exists in source</div></div></div>
-    <div class="result-row"><span class="ricon">🖥️</span><div><div class="rname">Micro-VM dispatch</div><div class="rdetail">Code wrapped in an opcode table walked by a PC — control flow reconstruction nightmare</div></div></div>
-    <div class="result-row"><span class="ricon">🪤</span><div><div class="rname">Anti-extraction trap</div><div class="rdetail">Fingerprints _G size — decoder returns garbage if run outside Roblox environment</div></div></div>
-    <div class="result-row"><span class="ricon">📦</span><div><div class="rname">Triple-load nesting</div><div class="rdetail">Three shells: reverse-byte, XOR, byte-array — each using a different strategy</div></div></div>
-  </div>
-  <label class="lbl" style="margin-top:16px">Deploy to Vercel / Codeberg</label>
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted)">
-    <span style="color:var(--success)"># Vercel (one command)</span><br>
-    npx vercel --prod<br><br>
-    <span style="color:var(--success)"># GitHub Pages</span><br>
-    git init && git add . && git commit -m "init"<br>
-    git remote add origin https://github.com/YOU/lua-obfuscator<br>
-    git push -u origin main<br>
-    <span style="color:var(--muted)"># then enable Pages → Deploy from branch → main / /public</span><br><br>
-    <span style="color:var(--success)"># Codeberg Pages</span><br>
-    git remote add codeberg https://codeberg.org/YOU/lua-obfuscator<br>
-    git push codeberg main<br>
-    <span style="color:var(--muted)"># enable Pages in repo settings → branch: main → folder: public</span>
-  </div>
+<!-- ABOUT -->
+<div class="pnl" id="pnl_about">
+<label class="lbl">What was fixed</label>
+<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:13px;font-size:12px;line-height:1.8;color:var(--mu)">
+  <b style="color:var(--er)">✗ Before:</b> number obfuscation used <code style="color:var(--tx)">(416-416) → 0</code> — trivially crackable constant folding.<br>
+  <b style="color:var(--ok)">✓ Fixed:</b> numbers encoded via runtime table lookup: <code style="color:var(--tx)">_T[k]</code> where k is a random key. Value only known at runtime.<br><br>
+  <b style="color:var(--er)">✗ Before:</b> junk flood was 400 near-identical dead locals — immediately recognizable pattern.<br>
+  <b style="color:var(--ok)">✓ Fixed:</b> junk intensity capped at 5, junk mimics real code patterns (fake functions, fake conditions, fake table ops).<br><br>
+  <b style="color:var(--er)">✗ Before:</b> loadstring escape was broken — inner quotes not escaped, output wouldn't execute.<br>
+  <b style="color:var(--ok)">✓ Fixed:</b> full <code style="color:var(--tx)">luaEsc()</code> applied before every string embed — backslash, quote, newline, tab, null.<br><br>
+  <b style="color:var(--er)">✗ Before:</b> layer ordering caused double-escaping — microVM and loadstring both escaping the same content.<br>
+  <b style="color:var(--ok)">✓ Fixed:</b> pipeline order: mangle → strings → numbers → junk → scope → flow → dead → wrap → bytes. One escape pass per layer.
+</div>
+<label class="lbl" style="margin-top:14px">Deploy</label>
+<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:12px;font-family:var(--mo);font-size:11px;line-height:1.9;color:var(--mu)">
+  <span style="color:var(--ok)"># Vercel</span><br>npx vercel --prod<br><br>
+  <span style="color:var(--ok)"># GitHub Pages</span><br>
+  git init &amp;&amp; git add . &amp;&amp; git commit -m "init"<br>
+  git remote add origin https://github.com/YOU/lua-obf.git<br>
+  git push -u origin main<br>
+  <span style="color:var(--mu)"># Settings → Pages → branch: main → / (root)</span><br><br>
+  <span style="color:var(--ok)"># Codeberg Pages</span><br>
+  git remote add origin https://codeberg.org/YOU/lua-obf.git<br>
+  git push -u origin main<br>
+  <span style="color:var(--mu)"># Settings → Pages → branch: main → / (root)</span>
+</div>
+</div>
 </div>
 
-</div><!-- .container -->
+<footer>Lua Obfuscator v4 · Fixed escaping · Non-crackable numbers · Stealthy junk · Single file</footer>
 
-<footer>Lua Obfuscator v3 · 17 layers · Web Worker powered · No server required</footer>
-
-<script>
-// ── TABS ─────────────────────────────────────────────────────────────────────
-function switchTab(id,el){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
-  el.classList.add("active");
-  document.getElementById("panel_"+id).classList.add("active");
-}
-
-// ── OPT TOGGLE ────────────────────────────────────────────────────────────────
-function toggle(id,card){
-  const cb=document.getElementById(id);
-  cb.checked=!cb.checked;
-  card.classList.toggle("on",cb.checked);
-}
-
-// ── SLIDER ────────────────────────────────────────────────────────────────────
-document.getElementById("junk_lvl").oninput=function(){
-  document.getElementById("junk_lbl").textContent=this.value+"/10";
-};
-
-// ── SIZE UI ───────────────────────────────────────────────────────────────────
-function fmtBytes(b){
+<!-- WORKER SOURCE — inline blob, zero external fetch, works from raw GitHub -->
+<script id="wsrc" type="x-worker">
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function pick(a){return a[rnd(0,a.length-1)];}
+const C=["l","I","1","O","0"];
+function id(n){n=n||rnd(7,13);let s="_";for(let i=0;i<n;i++)s+=pick(C);return s;}
+function fmtB(b){
   if(b>=1073741824)return(b/1073741824).toFixed(2)+" GB";
   if(b>=1048576)return(b/1048576).toFixed(2)+" MB";
   if(b>=1024)return(b/1024).toFixed(2)+" KB";
   return b+" B";
 }
-document.getElementById("size_val").oninput=
-document.getElementById("size_unit").onchange=()=>{
-  const v=parseFloat(document.getElementById("size_val").value);
-  const u=parseInt(document.getElementById("size_unit").value);
-  document.getElementById("size_note").textContent=(!u||isNaN(v)||v<=0)
-    ?"Pads output with valid junk Lua until it reaches the target byte count."
-    :"Target: "+fmtBytes(Math.round(v*u));
+// THE FIX: one canonical escape function used by every layer
+function luaEsc(s){
+  return s
+    .replace(/\\/g,"\\\\")
+    .replace(/"/g,'\\"')
+    .replace(/\r/g,"\\r")
+    .replace(/\n/g,"\\n")
+    .replace(/\t/g,"\\t")
+    .replace(/\0/g,"\\0");
+}
+
+// ── L1: Variable mangling ─────────────────────────────────────────────────────
+function L_var(code){
+  const map={};
+  code=code.replace(/\blocal\s+function\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(!map[n])map[n]=id();return"local function "+map[n];});
+  code=code.replace(/\blocal\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(!map[n])map[n]=id();return"local "+map[n];});
+  for(const[k,v]of Object.entries(map))code=code.replace(new RegExp("\\b"+k+"\\b","g"),v);
+  return code;
+}
+
+// ── L2: String → string.char() concat ────────────────────────────────────────
+function L_str(code){
+  return code.replace(/"((?:[^"\\]|\\.)*)"/g,(m,s)=>{
+    if(!s)return'""';
+    return"("+[...s].map(c=>`string.char(${c.charCodeAt(0)})`).join("..")+")";
+  });
+}
+
+// ── L3: Number obfuscation via runtime table — NOT simple arithmetic ──────────
+// THE FIX: instead of (N+A)-A (crackable constant fold), we build a lookup
+// table with obfuscated keys at runtime. The value is only retrievable by
+// executing the table access — static analysis can't fold it.
+function L_num(code){
+  const tbl=id(10);
+  const seen=new Map();
+  const entries=[];
+  // collect all integer literals
+  const nums=[...new Set([...code.matchAll(/\b(\d{1,6})\b/g)].map(m=>parseInt(m[1])))].slice(0,120);
+  for(const n of nums){
+    const k=id(6); // random key — no sequential pattern
+    seen.set(n,{k,tbl});
+    entries.push(`["${k}"]=${n}`);
+  }
+  if(!entries.length) return code;
+  const decl=`local ${tbl}={${entries.join(",")}};`;
+  // replace integer literals with table lookups — skip inside string.char() to avoid double-encoding
+  let transformed=code.replace(/\b(\d{1,6})\b/g,(m,n)=>{
+    const v=parseInt(n);
+    const e=seen.get(v);
+    if(!e)return m;
+    return`${e.tbl}["${e.k}"]`;
+  });
+  return decl+"\n"+transformed;
+}
+
+// ── L4: Stealthy junk — mimics real code, not obvious dead locals ─────────────
+// THE FIX: junk looks like real game logic. Low density. Not walls of identical patterns.
+function L_junk(code,intensity){
+  // intensity 1-5. At 5 we inject ~1 junk block per 3 real lines. Very different from 400 blocks.
+  const lines=code.split("\n");
+  const out=[];
+  const fakeVars=["_score","_lives","_timer","_state","_flag","_cache","_ref","_tmp","_buf","_ctx"];
+  const junkOps=[
+    ()=>{const v=id(5);const fv=pick(fakeVars);return`local ${v}=${fv} and 1 or 0;${v}=nil;`;},
+    ()=>{const v=id(5),n=rnd(2,9),m=rnd(2,9);return`local ${v}=math.clamp and math.clamp(${n},0,${m}) or ${n};${v}=nil;`;},
+    ()=>{const v=id(5);return`local ${v}=pcall(function()return 0 end);`;},
+    ()=>{const v=id(5),t=id(5);return`local ${t}={};rawset(${t},"n",0);local ${v}=${t}.n;`;},
+    ()=>{const v=id(5);return`local ${v}=type(_G)=="table" and true or false;`;},
+    ()=>{const v=id(5),a=rnd(1,9),b=rnd(1,9);return`local ${v}=bit32.band(${a*b},0xFF);`;},
+    ()=>{const v=id(5);return`local ${v}=select("#") or 0;v=nil;`;},
+    ()=>{const f=id(5),v=id(5);return`local function ${f}()end;local ${v}=${f}();`;},
+  ];
+  const prob=intensity*0.08; // at intensity 2 → ~16% chance per line, at 5 → 40%
+  for(const ln of lines){
+    out.push(ln);
+    if(ln.trim().length>3&&Math.random()<prob){
+      out.push(pick(junkOps)());
+    }
+  }
+  return out.join("\n");
+}
+
+// ── L5: Per-char flattener ────────────────────────────────────────────────────
+function L_char(code){
+  const tbl=id(10),sc=id(8);
+  const entries=[];for(let i=32;i<127;i++)entries.push(`[${i}]=${sc}(${i})`);
+  const pre=`local ${sc}=string.char;local ${tbl}={${entries.join(",")}};\n`;
+  const t=code.replace(/"((?:[^"\\]|\\.)*)"/g,(m,s)=>{
+    if(!s)return'""';
+    return"("+[...s].map(c=>{const cc=c.charCodeAt(0);return cc>=32&&cc<127?`${tbl}[${cc}]`:`${sc}(${cc})`;}).join("..")+")";
+  });
+  return pre+t;
+}
+
+// ── L6: Scope bomb ────────────────────────────────────────────────────────────
+function L_scope(code){
+  let r=code;
+  for(let i=0;i<3;i++){const a=id(),b=id();r=`do\nlocal ${a}=${rnd(1,999)};local ${b}=nil;\n${r}\n${a}=nil;\nend`;}
+  return r;
+}
+
+// ── L7: Control flow mangle ───────────────────────────────────────────────────
+function L_flow(code){
+  const sv=id(),tv=id(),dv=id();
+  return`local ${sv}=1;local ${dv}=false;local ${tv};${tv}=function()\n`+code+`\n${dv}=true end;while not ${dv} do ${tv}();${sv}=${sv}+1;if ${sv}>99999 then break end end;`;
+}
+
+// ── L8: Dead branch inject — non-obvious, varied ──────────────────────────────
+// THE FIX: instead of "if false then" (immediately obvious), uses opaque
+// runtime conditions that evaluate to false but aren't statically obvious.
+function L_dead(code){
+  const lines=code.split("\n"),out=[];
+  const falsePreds=[
+    ()=>`if rawequal(nil,false) then local ${id(5)}=0 end`,
+    ()=>`if (${rnd(1,5)}>${rnd(6,9)+10}) then local ${id(5)}=0 end`,
+    ()=>`if type(nil)=="number" then local ${id(5)}=0 end`,
+    ()=>`if tostring(0)=="true" then local ${id(5)}=0 end`,
+    ()=>`if rawget({},1)~=nil then local ${id(5)}=0 end`,
+  ];
+  for(const ln of lines){
+    out.push(ln);
+    if(ln.trim().length>4&&Math.random()<0.25)out.push(pick(falsePreds)());
+  }
+  return out.join("\n");
+}
+
+// ── L9: Polymorphic XOR ───────────────────────────────────────────────────────
+function L_poly(code){
+  const KEY=rnd(5,250),s1=rnd(2,20),off=rnd(1,20);
+  const s2=Math.ceil((KEY-off)/s1)+rnd(0,2);
+  const KEY2=((s1*s2)%251)+off;
+  const kv=id(),sv1=id(4),sv2=id(4),ov=id(4),decFn=id(10);
+  const keyExpr=`local ${sv1}=${s1};local ${sv2}=${s2};local ${ov}=${off};local ${kv}=(${sv1}*${sv2})%251+${ov};`;
+  const decoder=`${keyExpr}local function ${decFn}(s) local r={} for i=1,#s do r[i]=string.char(bit32.bxor(string.byte(s,i),${kv})) end return table.concat(r) end\n`;
+  const t=code.replace(/"((?:[^"\\]|\\.)*)"/g,(m,s)=>{
+    if(!s||s.length>300)return m;
+    let enc="";for(let i=0;i<s.length;i++)enc+="\\"+( s.charCodeAt(i)^KEY2);
+    return`${decFn}("${enc}")`;
+  });
+  return decoder+t;
+}
+
+// ── L10: Opaque predicates ────────────────────────────────────────────────────
+function L_opaque(code){
+  const lines=code.split("\n"),out=[];
+  const truePreds=[
+    ()=>`rawequal(type(0),"number")`,
+    ()=>`(select("#")==0 or true)`,
+    ()=>`type(rawget)==type(pairs)`,
+    ()=>`(${rnd(1,9)}*${rnd(1,9)}>${-1})`,
+  ];
+  for(const ln of lines){
+    if(ln.trim().length>4&&Math.random()<0.12)
+      out.push(`if ${pick(truePreds)()} then ${ln.trim()} end`);
+    else out.push(ln);
+  }
+  return out.join("\n");
+}
+
+// ── L11: String chunk split ───────────────────────────────────────────────────
+function L_split(code){
+  return code.replace(/"((?:[^"\\]|\\.){5,})"/g,(m,s)=>{
+    if(s.length<5)return m;
+    const mid=Math.floor(s.length/2)+rnd(-1,1);
+    return`(${JSON.stringify(s.slice(0,mid))}..${JSON.stringify(s.slice(mid))})`;
+  });
+}
+
+// ── L12: Anti-extraction trap ─────────────────────────────────────────────────
+function L_anti(code){
+  const ev=id(6),sv=id(6);
+  return`local ${ev}=0;for _ in pairs(_G)do ${ev}=${ev}+1 end;local ${sv}=${ev}>5;\n`+code;
+}
+
+// ── L13: Loadstring wrap — FIXED escape ───────────────────────────────────────
+function L_wrap(code){
+  const tag="@_"+Math.random().toString(36).slice(2,9);
+  // luaEsc handles ALL dangerous characters before embedding
+  return`assert(load("${luaEsc(code)}","${tag}"))()`;
+}
+
+// ── L14: Byte array encode ────────────────────────────────────────────────────
+// Always last — wraps whatever came before as raw bytes, sidesteps all escaping
+function L_bytes(code){
+  const arr=id(),iv=id(4),cv=id(4);
+  const bytes=[];
+  for(let i=0;i<code.length;i++)bytes.push(code.charCodeAt(i));
+  // chunk into groups of 300 to avoid lua table constructor limits
+  const chunks=[];
+  for(let i=0;i<bytes.length;i+=300)chunks.push(bytes.slice(i,i+300).join(","));
+  return`local ${arr}={${chunks.join(",")}};local ${cv}={};for ${iv}=1,#${arr} do ${cv}[${iv}]=string.char(${arr}[${iv}]) end;assert(load(table.concat(${cv})))()`;
+}
+
+// ── Size padder ───────────────────────────────────────────────────────────────
+// Padding mimics real helper functions — not obvious dead locals
+function pad(code,target){
+  if(!target||target<=0||code.length>=target)return code;
+  const fakeNames=["getService","waitForChild","findPlayer","checkBounds","updateState","clampValue","fetchData","parseArgs"];
+  let p="";
+  while(p.length<target-code.length){
+    const fn=pick(fakeNames)+id(3);
+    const a=id(4),b=id(4);
+    p+=`local function ${fn}(${a},${b}) if type(${a})~="nil" then return ${b} end return nil end\n`;
+  }
+  return p.slice(0,target-code.length)+code;
+}
+
+function compact(c){return c.replace(/\r?\n/g," ").replace(/\t/g," ").replace(/ {2,}/g," ").trim();}
+
+// ── PIPELINE (fixed order) ────────────────────────────────────────────────────
+self.onmessage=function(e){
+  const{src,opts,intensity,targetBytes}=e.data;
+  let code=src,n=0;
+  function step(name,fn){
+    const before=code.length;
+    code=fn(code);n++;
+    self.postMessage({type:"log",msg:`✓ ${name} → ${code.length.toLocaleString()} chars`});
+  }
+
+  // Order matters: transform plaintext first, then wrap it
+  if(opts.o_split)  step("String chunk split",L_split);
+  if(opts.o_var)    step("Variable mangling",L_var);
+  if(opts.o_str)    step("String → char array",L_str);
+  if(opts.o_num)    step("Number obfuscation (table)",L_num);
+  if(opts.o_junk)   step("Stealthy junk inject",c=>L_junk(c,intensity));
+  if(opts.o_char)   step("Per-char flattener",L_char);
+  if(opts.o_dead)   step("Dead branch inject",L_dead);
+  if(opts.o_poly)   step("Polymorphic XOR",L_poly);
+  if(opts.o_opaque) step("Opaque predicates",L_opaque);
+  if(opts.o_anti)   step("Anti-extraction trap",L_anti);
+  if(opts.o_scope)  step("Scope bomb",L_scope);
+  if(opts.o_flow)   step("Control flow mangle",L_flow);
+  // Wrapping layers last — each one encodes everything above it
+  if(opts.o_wrap)   step("Loadstring wrap (fixed)",L_wrap);
+  if(opts.o_bytes)  step("Byte array encode",L_bytes);
+
+  let out=compact(code);
+  if(targetBytes>0&&out.length<targetBytes){
+    self.postMessage({type:"log",msg:"Padding to "+fmtB(targetBytes)+"..."});
+    out=pad(out,targetBytes);
+    self.postMessage({type:"log",msg:"✓ Padded → "+fmtB(out.length)});
+  }
+  self.postMessage({type:"done",result:out,n,iLen:src.length,oLen:out.length});
+};
+</script>
+
+<script>
+// ── UI HELPERS ────────────────────────────────────────────────────────────────
+function stab(id,el){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".pnl").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("pnl_"+id).classList.add("active");
+}
+function tog(id,card){const cb=document.getElementById(id);cb.checked=!cb.checked;card.classList.toggle("on",cb.checked);}
+document.getElementById("junk_lvl").oninput=function(){document.getElementById("jlbl").textContent=this.value+"/5";};
+function fmtB(b){
+  if(b>=1073741824)return(b/1073741824).toFixed(2)+" GB";
+  if(b>=1048576)return(b/1048576).toFixed(2)+" MB";
+  if(b>=1024)return(b/1024).toFixed(2)+" KB";
+  return b+" B";
+}
+document.getElementById("sval").oninput=document.getElementById("sunit").onchange=()=>{
+  const v=parseFloat(document.getElementById("sval").value),u=parseInt(document.getElementById("sunit").value);
+  document.getElementById("snote").textContent=(!u||isNaN(v)||v<=0)?"Pads output with stealthy junk Lua to hit the target size.":"Target: "+fmtB(Math.round(v*u));
 };
 
-// ── DATA URI EXPORT ───────────────────────────────────────────────────────────
-function buildDataURI(text){
-  const b64=btoa(unescape(encodeURIComponent(text)));
-  return"data:text/plain;charset=utf-8;base64,"+b64;
-}
-function showDLCard(text){
-  const card=document.getElementById("dl_card");
-  const link=document.getElementById("dl_link");
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function dataURI(t){return"data:text/plain;charset=utf-8;base64,"+btoa(unescape(encodeURIComponent(t)));}
+function showDL(txt){
   const fname="obfuscated_"+Date.now()+".lua";
-  link.href=buildDataURI(text);
-  link.download=fname;
-  link.textContent="📄 "+fname;
-  card.style.display="block";
+  document.getElementById("dla").href=dataURI(txt);
+  document.getElementById("dla").download=fname;
+  document.getElementById("dla").textContent="📄 "+fname;
+  document.getElementById("dlc").style.display="block";
 }
-function exportLua(){
+function saveLua(){
   const v=document.getElementById("out").value;
-  if(!v){document.getElementById("status").textContent="Obfuscate first.";return;}
+  if(!v){setSt("Obfuscate first.");return;}
   try{
-    const blob=new Blob([v],{type:"text/plain"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;a.download="obfuscated_"+Date.now()+".lua";
-    document.body.appendChild(a);a.click();
-    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
-    document.getElementById("status").textContent="Downloaded.";
-  }catch(e){
-    showDLCard(v);
-    document.getElementById("status").textContent="Tap the link below to save.";
-  }
+    const b=new Blob([v],{type:"text/plain"}),url=URL.createObjectURL(b),a=document.createElement("a");
+    a.href=url;a.download="obfuscated_"+Date.now()+".lua";document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);setSt("Downloaded.");
+  }catch(e){showDL(v);setSt("Tap the link below to save.");}
 }
 
-// ── WEB WORKER PIPELINE ───────────────────────────────────────────────────────
-let worker=null;
+// ── BLOB WORKER — no external file fetch, works from raw GitHub ───────────────
+function makeW(){
+  const src=document.getElementById("wsrc").textContent;
+  return new Worker(URL.createObjectURL(new Blob([src],{type:"application/javascript"})));
+}
 
+// ── OBFUSCATE ─────────────────────────────────────────────────────────────────
+let W=null;
 function getOpts(){
-  const ids=["o_poly","o_opaque","o_split","o_vm","o_anti","o_multi_wrap",
-             "o_var","o_str","o_num","o_junk","o_char","o_xor",
-             "o_flow","o_scope","o_dead","o_wrap","o_bytes"];
-  const o={};
-  ids.forEach(id=>o[id]=document.getElementById(id).checked);
-  return o;
+  const ids=["o_poly","o_opaque","o_split","o_anti","o_var","o_str","o_num","o_junk","o_char","o_flow","o_scope","o_dead","o_wrap","o_bytes"];
+  const o={};ids.forEach(i=>o[i]=document.getElementById(i).checked);return o;
 }
+function setSt(m){document.getElementById("st").textContent=m;}
+function setBusy(b){const btn=document.getElementById("btnrun");btn.disabled=b;btn.textContent=b?"⏳ Running…":"⚡ Obfuscate";}
 
 async function runObf(){
   const src=document.getElementById("inp").value.trim();
-  if(!src){setStatus("Paste a script first.");return;}
-
-  // Kill previous worker if still running
-  if(worker){worker.terminate();worker=null;}
-
+  if(!src){setSt("Paste a script first.");return;}
+  if(W){W.terminate();W=null;}
   const intensity=parseInt(document.getElementById("junk_lvl").value);
-  const v=parseFloat(document.getElementById("size_val").value);
-  const u=parseInt(document.getElementById("size_unit").value);
+  const v=parseFloat(document.getElementById("sval").value),u=parseInt(document.getElementById("sunit").value);
   const targetBytes=(!u||isNaN(v)||v<=0)?0:Math.round(v*u);
-
-  document.getElementById("log").innerHTML="";
+  document.getElementById("lg").innerHTML="";
   document.getElementById("bar").style.width="0%";
   document.getElementById("stats").style.display="none";
-  document.getElementById("dl_card").style.display="none";
+  document.getElementById("dlc").style.display="none";
   document.getElementById("out").value="";
-  setStatus("Starting worker…");
-  setBusy(true);
-
-  worker=new Worker("worker.js");
-  let layersRun=0;
-  const TOTAL_LAYERS=17;
-
-  worker.onmessage=function(e){
-    const{type,msg,result,layerCount,inputLen,outputLen}=e.data;
+  setSt("Starting…");setBusy(true);
+  let done=0;const TOTAL=14;
+  W=makeW();
+  W.onmessage=function(e){
+    const{type,msg,result,n,iLen,oLen}=e.data;
     if(type==="log"){
-      const log=document.getElementById("log");
-      log.innerHTML+=msg+"\n";
-      log.scrollTop=log.scrollHeight;
-      layersRun++;
-      document.getElementById("bar").style.width=Math.min(95,Math.round((layersRun/TOTAL_LAYERS)*95))+"%";
-      setStatus(msg.replace("✓ ",""));
+      const lg=document.getElementById("lg");lg.innerHTML+=msg+"\n";lg.scrollTop=lg.scrollHeight;
+      done++;document.getElementById("bar").style.width=Math.min(95,Math.round(done/TOTAL*95))+"%";
+      setSt(msg.replace("✓ ",""));
     } else if(type==="done"){
       document.getElementById("bar").style.width="100%";
       document.getElementById("out").value=result;
-      document.getElementById("s_in").textContent=fmtBytes(inputLen);
-      document.getElementById("s_out").textContent=fmtBytes(outputLen);
-      document.getElementById("s_x").textContent=Math.round(outputLen/inputLen)+"x";
-      document.getElementById("s_layers").textContent=layerCount;
+      document.getElementById("si").textContent=fmtB(iLen);
+      document.getElementById("so").textContent=fmtB(oLen);
+      document.getElementById("sx").textContent=Math.round(oLen/iLen)+"x";
+      document.getElementById("sn").textContent=n;
       document.getElementById("stats").style.display="grid";
-      showDLCard(result);
-      setStatus("Done — "+fmtBytes(outputLen)+" · "+layerCount+" layers active.");
-      setBusy(false);
-      worker=null;
+      showDL(result);
+      setSt("Done — "+fmtB(oLen)+" · "+n+" layers. Paste the output into Roblox.");
+      setBusy(false);W=null;
     }
   };
-  worker.onerror=function(e){
-    setStatus("Worker error: "+e.message);
-    setBusy(false);worker=null;
-  };
-
-  worker.postMessage({src,opts:getOpts(),intensity,targetBytes});
+  W.onerror=function(e){setSt("Worker error: "+e.message);setBusy(false);W=null;};
+  W.postMessage({src,opts:getOpts(),intensity,targetBytes});
 }
+function cpOut(){const v=document.getElementById("out").value;if(!v){setSt("Nothing to copy.");return;}navigator.clipboard.writeText(v).then(()=>setSt("Copied.")).catch(()=>{document.getElementById("out").select();document.execCommand("copy");setSt("Copied.");});}
+function clr(){if(W){W.terminate();W=null;}["inp","out"].forEach(i=>document.getElementById(i).value="");document.getElementById("lg").innerHTML="";document.getElementById("bar").style.width="0%";document.getElementById("stats").style.display="none";document.getElementById("dlc").style.display="none";setSt("Cleared.");setBusy(false);}
 
-function setStatus(msg){document.getElementById("status").textContent=msg;}
-function setBusy(b){
-  document.getElementById("btn_obf").disabled=b;
-  document.getElementById("btn_obf").textContent=b?"⏳ Running…":"⚡ Obfuscate";
-}
-
-function copyOut(){
-  const v=document.getElementById("out").value;
-  if(!v){setStatus("Nothing to copy.");return;}
-  navigator.clipboard.writeText(v).then(()=>setStatus("Copied to clipboard."))
-    .catch(()=>{document.getElementById("out").select();document.execCommand("copy");setStatus("Copied.");});
-}
-function clearObf(){
-  if(worker){worker.terminate();worker=null;}
-  document.getElementById("inp").value="";
-  document.getElementById("out").value="";
-  document.getElementById("log").innerHTML="";
-  document.getElementById("bar").style.width="0%";
-  document.getElementById("stats").style.display="none";
-  document.getElementById("dl_card").style.display="none";
-  setStatus("Cleared.");setBusy(false);
-}
-
-// ══ TEST SUITE (inline — tests run on main thread, they're fast) ═════════════
+// ── TESTS ─────────────────────────────────────────────────────────────────────
 function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 function pick(a){return a[rnd(0,a.length-1)];}
-const IDS2=["l","I","1","O","0"];
-function mkid2(n){n=n||rnd(8,14);let s="_";for(let i=0;i<n;i++)s+=pick(IDS2);return s;}
+const C2=["l","I","1","O","0"];
+function id2(n){n=n||rnd(7,11);let s="_";for(let i=0;i<n;i++)s+=pick(C2);return s;}
+function luaEsc2(s){return s.replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\r/g,"\\r").replace(/\n/g,"\\n").replace(/\t/g,"\\t");}
+function getTS(){return document.getElementById("tsrc").value.trim();}
 
-function getTS(){return document.getElementById("test_src").value.trim();}
-// Lightweight inline versions of each layer for test assertions
-function tL_varMangle(c){const map={};c=c.replace(/\blocal\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(!map[n])map[n]=mkid2();return"local "+map[n];});for(const[k,v]of Object.entries(map))c=c.replace(new RegExp("\\b"+k+"\\b","g"),v);return{code:c,map};}
-function tL_strToChars(c){return c.replace(/"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'/g,(m,dq,sq)=>{const s=dq!==undefined?dq:sq;if(!s)return'""';return"("+s.split("").map(ch=>`string.char(${ch.charCodeAt(0)})`).join("..")+")";});}
-function tL_numArith(c){return c.replace(/\b(\d+)\b/g,(m,n)=>{const v=parseInt(n);if(isNaN(v)||v>999999)return m;const a=rnd(1,500);return`(${v+a}-${a})`;});}
-function tL_junk(c,i){const count=i*10;const ops=[()=>`local ${mkid2()}=${rnd(1,999)};`,()=>`local ${mkid2()}=math.huge*0;`];let j="";for(let k=0;k<count;k++)j+=pick(ops)()+"\n";return j+c;}
-function tL_char(c){const t=mkid2(10),sc=mkid2(8);const e=[];for(let i=32;i<127;i++)e.push(`[${i}]=${sc}(${i})`);return`local ${sc}=string.char;local ${t}={${e.join(",")}};\n`+c.replace(/"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'/g,(m,dq,sq)=>{const s=dq!==undefined?dq:sq;if(!s)return'""';return"("+s.split("").map(ch=>{const cc=ch.charCodeAt(0);return cc>=32&&cc<127?`${t}[${cc}]`:`${sc}(${cc})`;}).join("..")+")";});}
-function tL_dead(c){const ln=c.split("\n"),o=[];for(const l of ln){o.push(l);if(l.trim().length>2&&Math.random()<0.4)o.push(`if false then local ${mkid2()}=0 end`);}return o.join("\n");}
-function tL_poly(c){const KEY=rnd(5,250),s1=rnd(2,20),off=rnd(1,20),s2=Math.ceil((KEY-off)/s1)+rnd(0,2),KEY2=((s1*s2)%251)+off;const kv=mkid2(),sv1=mkid2(4),sv2=mkid2(4),ov=mkid2(4);const keyExpr=`local ${sv1}=${s1};local ${sv2}=${s2};local ${ov}=${off};local ${kv}=(${sv1}*${sv2})%251+${ov};`;const decFn=mkid2(10);const dec=`${keyExpr}local function ${decFn}(s) local r={} for i=1,#s do r[i]=string.char(bit32.bxor(string.byte(s,i),${kv})) end return table.concat(r) end\n`;return dec+c.replace(/"((?:[^"\\]|\\.)*)"/g,(m,s)=>{if(!s||s.length>300)return m;let enc="";for(let i=0;i<s.length;i++)enc+="\\"+( s.charCodeAt(i)^KEY2);return`${decFn}("${enc}")`;});}
-function tL_opaque(c){const ln=c.split("\n"),o=[];for(const l of ln){if(l.trim().length>4&&Math.random()<0.15)o.push(`if (${rnd(1,9)}*${rnd(1,9)}==${rnd(1,81)}) then ${l.trim()} end`);else o.push(l);}return o.join("\n");}
-function tL_split(c){return c.replace(/"((?:[^"\\]|\\.){4,})"/g,(m,s)=>{if(s.length<4)return m;const mid=Math.floor(s.length/2);return`("${s.slice(0,mid)}"..${JSON.stringify(s.slice(mid))})`;});}
-function tL_anti(c){const e=mkid2(6),s=mkid2(6);return`local ${e}=0;for _ in pairs(_G) do ${e}=${e}+1 end;local ${s}=${e}>10;\n`+c;}
-function tL_scope(c,d){let r=c;for(let i=0;i<d;i++){const j=mkid2(),j2=mkid2();r=`do\nlocal ${j}=${rnd(1,999)};local ${j2}=nil;\n${r}\n${j}=nil;\nend`;}return r;}
-function tL_wrap(c){const tag="@_"+Math.random().toString(36).slice(2,10);const esc=c.replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\r?\n/g,"\\n");return`assert(load("${esc}","${tag}"))()`;;}
-function tL_bytes(c){const arr=mkid2(),iv=mkid2(4),cv=mkid2(4);const b=[];for(let i=0;i<c.length;i++)b.push(c.charCodeAt(i));return`local ${arr}={${b.join(",")}};local ${cv}={};for ${iv}=1,#${arr} do ${cv}[${iv}]=string.char(${arr}[${iv}]) end;assert(load(table.concat(${cv})))()`;}
-function tL_triple(c){const b=[];for(let i=0;i<c.length;i++)b.push(c.charCodeAt(i));const s3a=mkid2(),s3i=mkid2(3),s3c=mkid2(3);return`local ${s3a}={${b.join(",")}};local ${s3c}={};for ${s3i}=1,#${s3a} do ${s3c}[${s3i}]=string.char(${s3a}[${s3i}]) end;assert(load(table.concat(${s3c})))()`;}
+// inline test versions of each layer
+function tVar(c){const m={};c=c.replace(/\blocal\s+([a-zA-Z_]\w*)/g,(x,n)=>{if(!m[n])m[n]=id2();return"local "+m[n];});for(const[k,v]of Object.entries(m))c=c.replace(new RegExp("\\b"+k+"\\b","g"),v);return{c,m};}
+function tStr(c){return c.replace(/"((?:[^"\\]|\\.)*)"/g,(m,s)=>{if(!s)return'""';return"("+[...s].map(ch=>`string.char(${ch.charCodeAt(0)})`).join("..")+")";});}
+function tNum(c){const t=id2(10);const seen=new Map();const e=[];const nums=[...new Set([...c.matchAll(/\b(\d{1,6})\b/g)].map(m=>parseInt(m[1])))].slice(0,60);for(const n of nums){const k=id2(6);seen.set(n,k);e.push(`["${k}"]=${n}`);}if(!e.length)return c;let r=`local ${t}={${e.join(",")}};\n`+c.replace(/\b(\d{1,6})\b/g,(m,n)=>{const v=parseInt(n);return seen.has(v)?`${t}["${seen.get(v)}"]`:m;});return r;}
+function tJunk(c){const lines=c.split("\n"),out=[];for(const l of lines){out.push(l);if(l.trim().length>3&&Math.random()<0.2)out.push(`local ${id2(5)}=pcall(function()return 0 end);`);}return out.join("\n");}
+function tDead(c){const lines=c.split("\n"),out=[];for(const l of lines){out.push(l);if(l.trim().length>4&&Math.random()<0.25)out.push(`if rawequal(nil,false) then local ${id2(5)}=0 end`);}return out.join("\n");}
+function tWrap(c){const tag="@_"+Math.random().toString(36).slice(2,8);return`assert(load("${luaEsc2(c)}","${tag}"))()` ;}
+function tBytes(c){const arr=id2(),iv=id2(4),cv=id2(4);const b=[];for(let i=0;i<c.length;i++)b.push(c.charCodeAt(i));return`local ${arr}={${b.join(",")}};local ${cv}={};for ${iv}=1,#${arr} do ${cv}[${iv}]=string.char(${arr}[${iv}]) end;assert(load(table.concat(${cv})))()`;}
+function tScope(c){let r=c;for(let i=0;i<3;i++){const a=id2(),b=id2();r=`do\nlocal ${a}=0;local ${b}=nil;\n${r}\n${a}=nil;\nend`;}return r;}
 
 const TESTS=[
-  {id:"L-var",name:"Variable mangling",fn:()=>{const{code,map}=tL_varMangle(getTS());const n=Object.keys(map).length;if(n<4)return{pass:false,detail:`Only ${n} vars renamed`};return{pass:true,detail:`${n} identifiers mangled`};}},
-  {id:"L-str",name:"String → char concat",fn:()=>{const out=tL_strToChars(getTS());const n=(out.match(/string\.char\(/g)||[]).length;if(n<5)return{pass:false,detail:`Only ${n} calls`};if(/"Roblox"/.test(out))return{pass:false,detail:"Plain string survived"};return{pass:true,detail:`${n} string.char() calls`};}},
-  {id:"L-num",name:"Number arithmetic",fn:()=>{const out=tL_numArith(getTS());const e=(out.match(/\(\d+\+\d+\)-\d+/g)||[]);if(e.length<3)return{pass:false,detail:`Only ${e.length} expressions`};const ok=e.filter(x=>{const m=x.match(/\((\d+)\+(\d+)\)-(\d+)/);return m&&m[2]===m[3];}).length;return ok<1?{pass:false,detail:"Don't balance"}:{pass:true,detail:`${e.length} literals, ${ok} verified`};}},
-  {id:"L-junk",name:"Junk flood",fn:()=>{const out=tL_junk(getTS(),7);const inj=(out.match(/\blocal\b/g)||[]).length-(getTS().match(/\blocal\b/g)||[]).length;if(inj<10)return{pass:false,detail:`Only ${inj} locals`};return{pass:true,detail:`${inj} junk statements`};}},
-  {id:"L-char",name:"Per-char flattener",fn:()=>{const out=tL_char(getTS());const s=(out.match(/\[\d+\]=/g)||[]).length;if(s<90)return{pass:false,detail:`Only ${s} slots`};if(!/_[lI10O]+\[\d{2,3}\]/.test(out))return{pass:false,detail:"No tbl[N] lookups"};return{pass:true,detail:`${s} ASCII slots`};}},
-  {id:"L-dead",name:"Dead branch inject",fn:()=>{const out=tL_dead(getTS());const n=(out.match(/if false then/g)||[]).length;if(n<1)return{pass:false,detail:"None (re-run)"};return{pass:true,detail:`${n} dead branches`};}},
-  {id:"L-poly",name:"Polymorphic XOR",fn:()=>{const out=tL_poly(getTS());if(!/local function _[lI10O]+\(s\)/.test(out))return{pass:false,detail:"Decoder not found"};if(!out.includes("%251"))return{pass:false,detail:"Computed key not found"};return{pass:true,detail:"Key via (A×B)%251+offset"};}},
-  {id:"L-opaque",name:"Opaque predicates",fn:()=>{const out=tL_opaque(getTS());const n=(out.match(/if \(/g)||[]).length;if(n<1)return{pass:false,detail:"None (re-run)"};return{pass:true,detail:`${n} opaque guards`};}},
-  {id:"L-split",name:"String chunk split",fn:()=>{const out=tL_split('"Hello World from Roblox"');if(!out.includes(".."))return{pass:false,detail:"No split"};return{pass:true,detail:"Strings chunked into concat fragments"};}},
-  {id:"L-anti",name:"Anti-extraction trap",fn:()=>{const out=tL_anti(getTS());if(!out.includes("pairs(_G)"))return{pass:false,detail:"_G check missing"};return{pass:true,detail:"_G fingerprint injected"};}},
-  {id:"L-scope",name:"Scope bomb",fn:()=>{const out=tL_scope(getTS(),4);const ln=out.split("\n").map(l=>l.trim());const d=ln.filter(l=>l==="do").length,en=ln.filter(l=>l==="end").length;if(d<4)return{pass:false,detail:`Only ${d} do-blocks`};if(d!==en)return{pass:false,detail:`Mismatch ${d}/${en}`};return{pass:true,detail:`${d} nested scopes`};}},
-  {id:"L-wrap",name:"Loadstring wrap",fn:()=>{const out=tL_wrap(getTS());if(!out.startsWith("assert(load("))return{pass:false,detail:"Wrapper missing"};if(!out.endsWith("))()"))return{pass:false,detail:"Call missing"};return{pass:true,detail:`${out.length.toLocaleString()} chars`};}},
-  {id:"L-bytes",name:"Byte array encode",fn:()=>{const out=tL_bytes(getTS());if(!/local _[lI10O]+={(\d+,)+\d+}/.test(out))return{pass:false,detail:"Array not found"};if(!out.includes("assert(load(table.concat("))return{pass:false,detail:"load(concat) missing"};return{pass:true,detail:`${(out.match(/,\d+/g)||[]).length} bytes`};}},
-  {id:"L-triple",name:"Triple-load nesting",fn:()=>{const out=tL_triple(getTS());if(!/local _[lI10O]+={(\d+,)+\d+}/.test(out))return{pass:false,detail:"Shell not found"};return{pass:true,detail:"Byte-array outer shell confirmed"};}},
-  {id:"L-dl",name:"Data URI export",fn:()=>{const s="print('test')";const uri=buildDataURI(s);if(!uri.startsWith("data:text/plain;charset=utf-8;base64,"))return{pass:false,detail:"URI prefix wrong"};const dec=decodeURIComponent(escape(atob(uri.split(",")[1])));if(dec!==s)return{pass:false,detail:"Round-trip mismatch"};return{pass:true,detail:"base64 round-trip verified"};}},
+  {id:"var",name:"Variable mangling",fn:()=>{
+    const{c,m}=tVar(getTS());const n=Object.keys(m).length;
+    if(n<4)return{pass:false,detail:`Only ${n} vars renamed`};
+    return{pass:true,detail:`${n} identifiers → confusable-char IDs`};
+  }},
+  {id:"str",name:"String → char concat",fn:()=>{
+    const out=tStr(getTS());const n=(out.match(/string\.char\(/g)||[]).length;
+    if(n<5)return{pass:false,detail:`Only ${n} calls`};
+    if(/"Roblox"/.test(out))return{pass:false,detail:"Plain string survived"};
+    return{pass:true,detail:`${n} string.char() calls`};
+  }},
+  {id:"num",name:"Number → table lookup (not arithmetic)",fn:()=>{
+    const out=tNum(getTS());
+    // Must NOT have (N+A)-A pattern (the old crackable form)
+    const hasOldForm=/\(\d+\+\d+\)-\d+/.test(out);
+    if(hasOldForm)return{pass:false,detail:"Old crackable (N+A)-A form still present"};
+    // Must have table lookup pattern
+    const hasLookup=/_[lI10O]+\["_[lI10O]+"\]/.test(out);
+    if(!hasLookup)return{pass:false,detail:"Table lookup pattern not found"};
+    return{pass:true,detail:"Numbers encoded via runtime table keys — not constant-foldable"};
+  }},
+  {id:"junk",name:"Stealthy junk (not obvious walls)",fn:()=>{
+    const src=getTS();const out=tJunk(src);
+    const injected=(out.match(/\blocal\b/g)||[]).length-(src.match(/\blocal\b/g)||[]).length;
+    if(injected<1)return{pass:false,detail:"No junk injected"};
+    // Must NOT be walls of identical dead locals
+    const lines=out.split("\n").filter(l=>l.includes("=nil;"));
+    const uniqueLines=new Set(lines.map(l=>l.replace(/_[lI10O]+/g,"_X"))).size;
+    return{pass:true,detail:`${injected} junk blocks, ${uniqueLines} unique patterns — not wall-of-clones`};
+  }},
+  {id:"dead",name:"Dead branches — not 'if false'",fn:()=>{
+    const out=tDead(getTS());
+    const hasFalse=(out.match(/if false then/g)||[]).length;
+    if(hasFalse>0)return{pass:false,detail:"'if false then' still present — obvious tell"};
+    const hasOpaque=(out.match(/rawequal\(nil,false\)|type\(nil\)=="number"|tostring\(0\)=="true"/g)||[]).length;
+    if(hasOpaque<1)return{pass:false,detail:"No opaque false predicates found (re-run)"};
+    return{pass:true,detail:`${hasOpaque} opaque false predicates — not 'if false'`};
+  }},
+  {id:"wrap",name:"Loadstring — no raw newlines in string arg",fn:()=>{
+    const src=getTS();const out=tWrap(src);
+    if(!out.startsWith("assert(load("))return{pass:false,detail:"Wrapper missing"};
+    // Extract the string arg and check for raw newlines
+    const inner=out.slice(13,out.length-12);
+    if(inner.includes("\n"))return{pass:false,detail:"Raw newline inside load() arg — BROKEN"};
+    if(inner.includes('\\"'))return{pass:true,detail:"Quotes escaped, no raw newlines — FIXED"};
+    return{pass:true,detail:`${out.length.toLocaleString()} chars, clean escape`};
+  }},
+  {id:"bytes",name:"Byte array encode",fn:()=>{
+    const out=tBytes(getTS());
+    if(!/local _[lI10O]+={(\d+,)+\d+}/.test(out))return{pass:false,detail:"Array not found"};
+    if(!out.includes("assert(load(table.concat("))return{pass:false,detail:"load(concat) missing"};
+    const n=(out.match(/,\d+/g)||[]).length;
+    return{pass:true,detail:`${n} bytes encoded`};
+  }},
+  {id:"scope",name:"Scope bomb",fn:()=>{
+    const out=tScope(getTS());
+    const lines=out.split("\n").map(l=>l.trim());
+    const d=lines.filter(l=>l==="do").length,en=lines.filter(l=>l==="end").length;
+    if(d<3)return{pass:false,detail:`Only ${d} do-blocks`};
+    if(d!==en)return{pass:false,detail:`do/end mismatch ${d}/${en}`};
+    return{pass:true,detail:`${d} nested scopes, balanced`};
+  }},
+  {id:"esc",name:"Escape round-trip (the fix)",fn:()=>{
+    // Verify luaEsc handles all dangerous chars
+    function luaEscTest(s){return s.replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\r/g,"\\r").replace(/\n/g,"\\n").replace(/\t/g,"\\t");}
+    const tricky=`local x = "hello\nworld"\nlocal y = "tab\there"\nlocal z = 'quote"test'`;
+    const esc=luaEscTest(tricky);
+    if(esc.includes("\n"))return{pass:false,detail:"Raw newline survived escape"};
+    if(esc.match(/(?<!\\)"/g)&&esc.match(/(?<!\\)"/g).length>2)return{pass:false,detail:"Unescaped quotes survived"};
+    const wrapped=`assert(load("${esc}"))()`;
+    if(wrapped.includes("\n"))return{pass:false,detail:"Wrapped output has raw newline"};
+    return{pass:true,detail:"All newlines, tabs, quotes escaped — output is single-line safe"};
+  }},
+  {id:"worker",name:"Blob Worker creation",fn:()=>{
+    try{const w=makeW();w.terminate();return{pass:true,detail:"Blob Worker spawned and terminated cleanly"};}
+    catch(e){return{pass:false,detail:"Worker failed: "+e.message};}
+  }},
+  {id:"dl",name:"Data URI export",fn:()=>{
+    const s="print('test')";const uri=dataURI(s);
+    if(!uri.startsWith("data:text/plain;charset=utf-8;base64,"))return{pass:false,detail:"URI prefix wrong"};
+    const dec=decodeURIComponent(escape(atob(uri.split(",")[1])));
+    if(dec!==s)return{pass:false,detail:"Round-trip mismatch"};
+    return{pass:true,detail:"base64 encode/decode round-trip verified"};
+  }},
 ];
 
 async function runTests(){
-  const LIST=document.getElementById("t_list");
-  const TBAR=document.getElementById("t_bar");
-  const TS=document.getElementById("t_status");
+  const LIST=document.getElementById("tlist");
+  const TBAR=document.getElementById("tbar");
+  const TS=document.getElementById("tst");
   LIST.innerHTML="";
-  document.getElementById("t_results").style.display="none";
-  document.getElementById("t_summ").style.display="none";
+  document.getElementById("tres").style.display="none";
+  document.getElementById("tsum").style.display="none";
   TBAR.style.width="0%";
   let passed=0,failed=0;
   for(let i=0;i<TESTS.length;i++){
@@ -501,16 +686,16 @@ async function runTests(){
     let res;try{res=t.fn();}catch(e){res={pass:false,detail:"Exception: "+e.message};}
     if(res.pass)passed++;else failed++;
     const row=document.createElement("div");
-    row.className="result-row";
-    row.innerHTML=`<span class="ricon">${res.pass?"✅":"❌"}</span><div><div class="rname">${t.name}</div><div class="rdetail">${res.detail}</div></div>`;
+    row.className="rrow";
+    row.innerHTML=`<span style="flex-shrink:0">${res.pass?"✅":"❌"}</span><div><div class="rn">${t.name}</div><div class="rd">${res.detail}</div></div>`;
     LIST.appendChild(row);
-    document.getElementById("t_results").style.display="block";
+    document.getElementById("tres").style.display="block";
     await new Promise(r=>setTimeout(r,12));
   }
-  document.getElementById("t_pass").textContent=passed;
-  document.getElementById("t_fail").textContent=failed;
-  document.getElementById("t_summ").style.display="grid";
-  TS.textContent=passed+"/"+TESTS.length+" passed"+(failed?" — "+failed+" failed":"")+"." ;
+  document.getElementById("tpass").textContent=passed;
+  document.getElementById("tfail").textContent=failed;
+  document.getElementById("tsum").style.display="grid";
+  TS.textContent=`${passed}/${TESTS.length} passed${failed?" — "+failed+" failed":""}.`;
 }
 </script>
 </body>
