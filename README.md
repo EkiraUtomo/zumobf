@@ -1,111 +1,113 @@
-# Lua Obfuscator v3
+# Lua Obfuscator v5 — VM Edition
 
-17-layer Lua / Roblox script obfuscator. All heavy processing runs in a **Web Worker** — UI never freezes. No server, no build step, pure static HTML.
+The most advanced Lua/Roblox obfuscator available. Compiles your script to a
+custom 39-opcode bytecode format executed by an embedded virtual machine.
+**No `load()` call on source code. Ever.**
 
-## Features
+## Why VM mode breaks the ceiling
 
-| Layer | What it does |
-|---|---|
-| Variable mangling | Renames every local to a confusable-char ID (`_lI1O0`) |
-| String → char array | Splits every string into `string.char()` calls |
-| Number arithmetic | Wraps integers in `(N+A)-A` expressions |
-| Massive junk flood | Injects up to 400 dead-variable blocks |
-| Per-char flattener | Builds a 95-slot ASCII table, replaces all chars with `tbl[N]` |
-| Polymorphic XOR | Key derived at runtime via `(A×B)%251+offset` — no plaintext key |
-| Opaque predicates | Guards real code behind statically-undecidable conditions |
-| String chunk split | Shreds strings into random fragments joined at runtime |
-| Micro-VM dispatch | Wraps code in an opcode table walked by a program counter |
-| Anti-extraction trap | Fingerprints `_G` size — decoder poisons isolated runs |
-| Triple-load nesting | Three shells: reverse-byte → XOR → byte-array |
-| Control flow mangle | Wraps body in a coroutine-style dispatcher |
-| Scope bomb | 4× nested `do...end` blocks with junk locals |
-| Dead branch inject | Injects `if false then` / impossible-condition branches |
-| Loadstring wrap | `assert(load(..., "@tag"))()` outer shell |
-| Byte array encode | Encodes full output as byte table, rebuilt via `string.char` |
-| Size padding | Pads to a target file size (KB / MB / GB) |
+Every previous obfuscation approach using `load()` can be defeated by hooking
+`load` globally — one line of Lua reveals the decoded source regardless of
+how many XOR/byte-array layers wrapped it.
 
-## Project structure
+VM mode eliminates this attack surface:
 
 ```
-lua-obfuscator/
+Source Lua
+↓ JS Lexer + Recursive-descent Parser
+AST
+↓ Bytecode compiler (39 opcodes)
+Bytecode array [numbers]
+↓ Rolling-XOR encryption (seed computed, never static)
+Encrypted bytecode
+↓ Emit: Lua VM + encrypted bytecode table
+VM Lua source
+↓ v4 pipeline: var mangle + junk + XOR + scope + flow + loadstring + byte array
+Final single-line output — no load() on source
+```
+
+A `load()` hook sees the VM booting — not your script. To reverse VM mode
+an attacker must reverse the VM instruction set, decrypt the rolling-XOR
+bytecode, deserialize the custom proto format, reconstruct control flow from
+opcodes, and then understand the reconstructed logic. Multi-hour job for
+a skilled reverser.
+
+## Supported Lua constructs
+
+- `local` variable declarations (single and multi)
+- `local function` and anonymous functions
+- All arithmetic: `+ - * / % ^`
+- All comparisons: `== ~= < <= > >=`
+- All logic: `and or not`
+- String concat `..` and length `#`
+- `if / elseif / else / end`
+- `while / do / end`
+- `for i = start, limit, step do` (numeric)
+- `for k in iter do` (generic)
+- `repeat / until`
+- `do / end` blocks
+- `return` (single and multi-value)
+- `break`
+- Table constructors `{}`, field access `.`, index access `[]`
+- Method calls `:`
+- String and number literals, `true`, `false`, `nil`, `...`
+- Nested functions and closures
+- Global access (`game`, `workspace`, `print`, etc.)
+
+## Files
+
+```
+lua-obf-v5/
 ├── public/
-│   ├── index.html   ← full UI
-│   └── worker.js    ← all obfuscation runs here (Web Worker)
-├── vercel.json      ← Vercel static deploy config
+│   └── index.html   ← everything in one file (compiler + VM + UI)
+├── vercel.json
+├── .gitignore
 └── README.md
 ```
 
----
-
 ## Deploy
 
-### Vercel (fastest — one command)
-
+### Vercel (one command)
 ```bash
-cd lua-obfuscator
 npx vercel --prod
 ```
 
-Vercel auto-detects `vercel.json` and serves `public/` as the root. Done.
-
 ### GitHub Pages
-
 ```bash
-cd lua-obfuscator
-git init
-git add .
-git commit -m "init: lua obfuscator v3"
+git init && git add . && git commit -m "init: lua obfuscator v5 VM edition"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/lua-obfuscator.git
+git remote add origin https://github.com/YOU/lua-obf.git
 git push -u origin main
+# Settings → Pages → branch: main → / (root)
+# Live at: https://YOU.github.io/lua-obf/
 ```
-
-Then in your repo on GitHub:
-1. Settings → Pages
-2. Source: **Deploy from a branch**
-3. Branch: `main` / folder: `/public`
-4. Save — live at `https://YOUR_USERNAME.github.io/lua-obfuscator/`
 
 ### Codeberg Pages
-
 ```bash
-cd lua-obfuscator
-git init
-git add .
-git commit -m "init: lua obfuscator v3"
-git remote add origin https://codeberg.org/YOUR_USERNAME/lua-obfuscator.git
+git remote add origin https://codeberg.org/YOU/lua-obf.git
 git push -u origin main
+# Settings → Pages → branch: main → / (root)
 ```
 
-Then in your Codeberg repo:
-1. Settings → Pages
-2. Branch: `main` / folder: `public`
-3. Save — live at `https://YOUR_USERNAME.codeberg.page/lua-obfuscator/`
+### Raw GitHub (direct link)
+Works — single file, inline Blob Worker, no external dependencies.
+```
+https://raw.githubusercontent.com/YOU/lua-obf/main/public/index.html
+```
 
----
-
-## Local development
-
-No build step. Just open the file directly — but Web Workers require a server context (no `file://`). Use any static server:
-
+## Local dev
+Web Workers need a real server, not `file://`:
 ```bash
-# Python
 cd public && python3 -m http.server 8080
-
-# Node
-npx serve public
-
-# VS Code
-# Install "Live Server" extension → right-click index.html → Open with Live Server
+# open http://localhost:8080
 ```
-
-Then open `http://localhost:8080`.
-
----
 
 ## Notes
 
-- Output is always a single compact line of valid Lua / Luau
-- The obfuscated script runs identically to the original
-- `bit32` is required at runtime (available in Roblox Luau; not in vanilla Lua 5.1 without a compat library)
-- Web Worker is loaded from `worker.js` in the same directory — keep both files together
+- Output is always a single compact line of valid Luau
+- `bit32` required at runtime (available in Roblox Luau)
+- `string.unpack` used for float64 deserialization if available (Luau 5.1+)
+- Fallback mode available for scripts that use advanced patterns the
+  compiler doesn't yet handle (metatables, coroutines, `rawset`/`rawget` heavy code)
+- The Blob Worker is built from an inline `<script type="x-worker">` tag —
+  no `worker.js` file needed, zero CORS issues from any hosting origin
