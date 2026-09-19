@@ -391,6 +391,36 @@ class Compiler{
   }
 
   compileExprStat(p){
+    // Multiple assignment: a, b, c = ...
+    if(p.peek().t===TK.NAME&&p.peekAt(1).t===TK.COMMA){
+      const targets=[];
+      while(true){
+        const name=p.expect(TK.NAME).v;
+        const li=this.findLocal(name);
+        targets.push(li>=0?{kind:"local",idx:li}:{kind:"global",idx:this.addConst(name)});
+        if(p.peek().t!==TK.COMMA)break;
+        p.next();
+      }
+      p.expect(TK.ASSIGN);
+      const rhs=[];
+      while(true){
+        this.compileExpr(p);
+        rhs.push(this.code[this.code.length-1]);
+        if(p.peek().t!==TK.COMMA)break;
+        p.next();
+      }
+      const last=rhs[rhs.length-1];
+      if(last&&last[0]===OP.CALL)last[2]=Math.max(1,targets.length-rhs.length+1);
+      const produced=rhs.length-1+(last&&last[0]===OP.CALL?Math.max(1,targets.length-rhs.length+1):1);
+      for(let i=produced;i>targets.length;i--)this.emit(OP.POP);
+      for(let i=produced;i<targets.length;i++)this.emit(OP.LOAD_NIL);
+      for(let i=targets.length-1;i>=0;i--){
+        const t=targets[i];
+        if(t.kind==="local")this.emit(OP.STORE_VAR,t.idx);
+        else this.emit(OP.STORE_GLOBAL,t.idx);
+      }
+      return;
+    }
     this.compileExpr(p);
     if(p.peek().t===TK.ASSIGN||[TK.ADDASSIGN,TK.SUBASSIGN,TK.MULASSIGN,TK.DIVASSIGN,TK.MODASSIGN].includes(p.peek().t)){
       const opTk=p.next().t;
