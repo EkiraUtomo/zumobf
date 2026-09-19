@@ -8,19 +8,20 @@ function lex(src){const toks=[];let i=0;while(i<src.length){if(/\s/.test(src[i])
 // ══════════════════════════════════════════════════════════════════════════════
 // OPCODES
 // ══════════════════════════════════════════════════════════════════════════════
-const OP={LOAD_K:0,LOAD_NIL:1,LOAD_BOOL:2,LOAD_VAR:3,STORE_VAR:4,LOAD_GLOBAL:5,STORE_GLOBAL:6,ADD:10,SUB:11,MUL:12,DIV:13,MOD:14,POW:15,UNM:16,CONCAT:17,LEN:18,EQ:20,NEQ:21,LT:22,LTE:23,GT:24,GTE:25,NOT:26,AND:27,OR:28,JMP:30,JMP_FALSE:31,JMP_TRUE:32,NEW_TABLE:40,SET_FIELD:41,GET_FIELD:42,SET_INDEX:43,GET_INDEX:44,MAKE_CLOSURE:50,CALL:51,RETURN:52,VARARG:53,POP:60,DUP:61};
+const OP={LOAD_K:0,LOAD_NIL:1,LOAD_BOOL:2,LOAD_VAR:3,STORE_VAR:4,LOAD_GLOBAL:5,STORE_GLOBAL:6,LOAD_UPVALUE:7,STORE_UPVALUE:8,ADD:10,SUB:11,MUL:12,DIV:13,MOD:14,POW:15,UNM:16,CONCAT:17,LEN:18,EQ:20,NEQ:21,LT:22,LTE:23,GT:24,GTE:25,NOT:26,AND:27,OR:28,JMP:30,JMP_FALSE:31,JMP_TRUE:32,NEW_TABLE:40,SET_FIELD:41,GET_FIELD:42,SET_INDEX:43,GET_INDEX:44,MAKE_CLOSURE:50,CALL:51,RETURN:52,VARARG:53,POP:60,DUP:61,SWAP:62};
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COMPILER
 // ══════════════════════════════════════════════════════════════════════════════
 class Compiler{
-  constructor(){this.code=[];this.consts=[];this.protos=[];this.locals=[];this.depth=0;this.breaks=[];}
+  constructor(parent=null){this.code=[];this.consts=[];this.protos=[];this.locals=[];this.depth=0;this.breaks=[];this.continues=[];this.parent=parent;this.nextLocal=0;}
   addConst(v){const i=this.consts.findIndex(c=>c===v);if(i>=0)return i;this.consts.push(v);return this.consts.length-1;}
   emit(...a){this.code.push(a);return this.code.length-1;}
   patch(i,f,v){this.code[i][f]=v;}
   here(){return this.code.length;}
-  findLocal(n){for(let i=this.locals.length-1;i>=0;i--)if(this.locals[i].name===n)return i;return -1;}
-  pushLocal(n){this.locals.push({name:n,depth:this.depth});}
+  findLocal(n){for(let i=this.locals.length-1;i>=0;i--)if(this.locals[i].name===n)return this.locals[i].slot;return -1;}
+  resolveUpvalue(n){let c=this.parent,d=1;while(c){const slot=c.findLocal(n);if(slot>=0)return{depth:d,slot};c=c.parent;d++;}return null;}
+  pushLocal(n){this.locals.push({name:n,depth:this.depth,slot:this.nextLocal++});}
   popScope(){while(this.locals.length&&this.locals[this.locals.length-1].depth>=this.depth)this.locals.pop();}
 
   compileBlock(p){this.depth++;while(!['end','else','elseif','until',TK.EOF].includes(p.peek().t)){this.compileStat(p);if(p.peek().t===TK.SEMI)p.next();}this.popScope();this.depth--;}
@@ -102,7 +103,7 @@ class Compiler{
         p.next();this.compileExpr(p);p.expect(TK.COMMA);this.compileExpr(p);
         let step=false;if(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);step=true;}
         if(!step)this.emit(OP.LOAD_K,this.addConst(1));
-        const iS=this.locals.length;
+        const iS=this.nextLocal;
         this.pushLocal('__stp');this.emit(OP.STORE_VAR,iS+2);
         this.pushLocal('__lim');this.emit(OP.STORE_VAR,iS+1);
         this.pushLocal(name);this.emit(OP.STORE_VAR,iS);
@@ -119,7 +120,7 @@ class Compiler{
         // Generic for: iterator expression yields (iter_fn, state, ctrl).
         // Each iteration yields one value per loop variable; the first value
         // becomes the control variable for the next iterator call.
-        const iS=this.locals.length;
+        const iS=this.nextLocal;
         const lastCall=this.code[this.code.length-1];
         if(lastCall&&lastCall[0]===OP.CALL){lastCall[2]=3;}
         this.pushLocal('__iter');this.emit(OP.STORE_VAR,iS);
@@ -152,7 +153,9 @@ class Compiler{
     else if(tk.t===TK.RETURN){
       p.next();let n=0;
       if(![TK.EOF,'end','else','elseif','until'].includes(p.peek().t)){
-        this.compileExpr(p);n=1;while(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);n++;}
+        this.compileExpr(p);n=1;
+        if(p.peek().t===TK.COMMA){while(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);n++;}}
+        else {const last=this.code[this.code.length-1];if(last&&last[0]===OP.CALL){last[2]=255;n=255;}}
       }
       this.emit(OP.RETURN,n);
     }
@@ -176,7 +179,8 @@ class Compiler{
       while(true){
         const name=p.expect(TK.NAME).v;
         const li=this.findLocal(name);
-        targets.push(li>=0?{kind:"local",idx:li}:{kind:"global",idx:this.addConst(name)});
+        if(li>=0)targets.push({kind:"local",idx:li});
+        else {const up=this.resolveUpvalue(name);if(up)targets.push({kind:"up",depth:up.depth,idx:up.slot});else targets.push({kind:"global",idx:this.addConst(name)});}
         if(p.peek().t!==TK.COMMA)break;
         p.next();
       }
@@ -196,6 +200,7 @@ class Compiler{
       for(let i=targets.length-1;i>=0;i--){
         const t=targets[i];
         if(t.kind==="local")this.emit(OP.STORE_VAR,t.idx);
+        else if(t.kind==="up")this.emit(OP.STORE_UPVALUE,t.depth,t.idx);
         else this.emit(OP.STORE_GLOBAL,t.idx);
       }
       return;
@@ -207,6 +212,7 @@ class Compiler{
       if(opTk===TK.ASSIGN){
         this.code.pop();this.compileExpr(p);
         if(last[0]===OP.LOAD_VAR)this.emit(OP.STORE_VAR,last[1]);
+        else if(last[0]===OP.LOAD_UPVALUE)this.emit(OP.STORE_UPVALUE,last[1],last[2]);
         else if(last[0]===OP.LOAD_GLOBAL)this.emit(OP.STORE_GLOBAL,last[1]);
         else if(last[0]===OP.GET_FIELD)this.emit(OP.SET_FIELD,-1,last[2]);
         else this.emit(OP.POP);
@@ -214,6 +220,7 @@ class Compiler{
         const bop={[TK.ADDASSIGN]:OP.ADD,[TK.SUBASSIGN]:OP.SUB,[TK.MULASSIGN]:OP.MUL,[TK.DIVASSIGN]:OP.DIV,[TK.MODASSIGN]:OP.MOD}[opTk];
         this.compileExpr(p);this.emit(bop);
         if(last[0]===OP.LOAD_VAR)this.emit(OP.STORE_VAR,last[1]);
+        else if(last[0]===OP.LOAD_UPVALUE)this.emit(OP.STORE_UPVALUE,last[1],last[2]);
         else if(last[0]===OP.LOAD_GLOBAL)this.emit(OP.STORE_GLOBAL,last[1]);
         else if(last[0]===OP.GET_FIELD)this.emit(OP.SET_FIELD,-1,last[2]);
         else this.emit(OP.POP);
@@ -240,7 +247,7 @@ class Compiler{
       params.push(p.expect(TK.NAME).v);if(p.peek().t===TK.COLON){p.next();if(p.peek().t===TK.LBRACE){this.skipTypeExpr(p);}else p.next();}if(p.peek().t===TK.COMMA)p.next();
     }
     p.expect(TK.RPAREN);if(p.peek().t===TK.COLON){p.next();if(p.peek().t===TK.LBRACE){this.skipTypeExpr(p);}else p.next();}
-    const sub=new Compiler();sub.depth=1;
+    const sub=new Compiler(this);sub.depth=1;
     for(const pn of params)sub.pushLocal(pn);
     sub.compileBlock(p);if(p.peek().t==='end')p.next();
     if(!sub.code.length||sub.code[sub.code.length-1][0]!==OP.RETURN)sub.emit(OP.RETURN,0);
@@ -277,7 +284,7 @@ class Compiler{
     while(true){
       if(p.peek().t===TK.DOT){p.next();const k=p.expect(TK.NAME).v;this.emit(OP.GET_FIELD,-1,this.addConst(k));}
       else if(p.peek().t===TK.LBRACKET){p.next();this.compileExpr(p);p.expect(TK.RBRACKET);this.emit(OP.GET_INDEX);}
-      else if(p.peek().t===TK.COLON){p.next();const m=p.expect(TK.NAME).v;this.emit(OP.DUP);this.emit(OP.GET_FIELD,-1,this.addConst(m));const ac=this.compileArgs(p,true);this.emit(OP.CALL,ac,1);}
+      else if(p.peek().t===TK.COLON){p.next();const m=p.expect(TK.NAME).v;this.emit(OP.DUP);this.emit(OP.GET_FIELD,-1,this.addConst(m));this.emit(OP.SWAP);const ac=this.compileArgs(p,true);this.emit(OP.CALL,ac,1);}
       else if([TK.LPAREN,TK.LBRACE,TK.STR].includes(p.peek().t)){const ac=this.compileArgs(p,false);this.emit(OP.CALL,ac,1);}
       else break;
     }
@@ -300,7 +307,7 @@ class Compiler{
     else if(tk.t===TK.FUNCTION){p.next();this.compileFunction(p);}
     else if(tk.t===TK.LBRACE){this.compileTable(p);}
     else if(tk.t===TK.LPAREN){p.next();this.compileExpr(p);p.expect(TK.RPAREN);}
-    else if(tk.t===TK.NAME){p.next();const li=this.findLocal(tk.v);if(li>=0)this.emit(OP.LOAD_VAR,li);else this.emit(OP.LOAD_GLOBAL,this.addConst(tk.v));}
+    else if(tk.t===TK.NAME){p.next();const li=this.findLocal(tk.v);if(li>=0)this.emit(OP.LOAD_VAR,li);else {const up=this.resolveUpvalue(tk.v);if(up)this.emit(OP.LOAD_UPVALUE,up.depth,up.slot);else this.emit(OP.LOAD_GLOBAL,this.addConst(tk.v));}}
     else throw new Error('Unexpected token: '+tk.t+'('+tk.v+')');
   }
   compileTable(p){
@@ -317,7 +324,7 @@ class Compiler{
 class Parser{constructor(t){this.toks=t;this.i=0;}peek(){return this.toks[this.i];}peekAt(n){return this.toks[this.i+n]||{t:TK.EOF,v:null};}next(){return this.toks[this.i++];}expect(t){const tk=this.next();if(tk.t!==t)throw new Error('Expected '+t+' got '+tk.t+'('+tk.v+')');return tk;}}
 
 // ══════════════════════════════════════════════════════════════════════════════
-// SERIALIZE + BYTECODE ENCRYPT
+// SERIALIZE + REAL STACK VM
 // ══════════════════════════════════════════════════════════════════════════════
 function serializeProto(p){
   const out=[];
@@ -326,16 +333,16 @@ function serializeProto(p){
     if(c===null||c===undefined){out.push(3);}
     else if(typeof c==='boolean'){out.push(2,c?1:0);}
     else if(typeof c==='number'){
-      out.push(0);const buf=new ArrayBuffer(8);new DataView(buf).setFloat64(0,c,true);
-      const a=new Uint8Array(buf);for(const b of a)out.push(b);
+      const str=String(c);out.push(0,str.length);for(let i=0;i<str.length;i++)out.push(str.charCodeAt(i));
     } else {
-      out.push(1,c.length);for(let i=0;i<c.length;i++)out.push(c.charCodeAt(i));
+      const str=String(c);out.push(1,str.length);for(let i=0;i<str.length;i++)out.push(str.charCodeAt(i));
     }
   }
   out.push(p.code.length);
   for(const ins of p.code){out.push(ins.length);for(const v of ins)out.push(v==null?0:v);}
   out.push(p.protos.length);
   for(const s of p.protos)out.push(...serializeProto(s));
+  out.push(p.params||0,p.vararg?1:0);
   return out;
 }
 
@@ -346,97 +353,88 @@ function compile(src){
   return serializeProto({code:c.code,consts:c.consts,protos:c.protos,params:0,vararg:true});
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// EMIT VM + BYTECODE AS LUA
-// ══════════════════════════════════════════════════════════════════════════════
 function rndI(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 const IDS=['l','I','1','O','0'];
 function id(n){n=n||rndI(7,13);let s='_';for(let i=0;i<n;i++)s+=IDS[rndI(0,4)];return s;}
 function luaEsc(s){return s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/\t/g,'\\t');}
 
 function emitVMLua(bc){
-  // Rolling XOR encrypt the bytecode
   const seed=rndI(1,250);
   const enc=bc.map((v,i)=>(v^((seed+i*7)%251))&0xFF);
-
-  const bcN=id(10),sdN=id(5),iN=id(3);
-  const vmN=id(10),DN=id(3),EN=id(3),prN=id(3);
-  const stk=id(4),sp=id(3),loc=id(4),pcN=id(3),codeN=id(4),KN=id(2);
-  const pu=id(3),po=id(3),pk=id(3),ins=id(3),opN=id(2);
-  const bN=id(3),aN=id(3),vN=id(3),tN=id(2),fn=id(3),rN=id(3),caN=id(3);
-  const nN=id(3),acN=id(3),nrN=id(3),posN=id(4),pN=id(3),ncN=id(3),niN=id(3),npN=id(3);
-  const ctN=id(3),slN=id(3),chN=id(3),ilN=id(3),spN2=id(4),envN=id(4),argsN=id(4);
-
+  const vmN=id(10),DE=id(3),EX=id(3),bcN=id(4),sdN=id(4),iN=id(3),posN=id(4);
+  const frameN=id(4),stk=id(4),sp=id(3),pcN=id(3),codeN=id(4),KN=id(3),ins=id(3),opN=id(3);
+  const bN=id(3),vN=id(3),tN=id(3),kN=id(3),aN=id(3),fnN=id(3),argsN=id(4),resN=id(4),nretN=id(3),outN=id(4);
+  const cN=id(3),upN=id(3),tmpN=id(3),pN=id(3),jN=id(3),idxN=id(3),sN=id(3);
   return `local ${sdN}=${seed};local ${bcN}={${enc.join(',')}};for ${iN}=1,#${bcN} do ${bcN}[${iN}]=(${bcN}[${iN}])~(((${sdN}+(${iN}-1)*7)%251)) end
-local function ${vmN}(bc)
-local function ${DN}(bc,${posN}) ${posN}=${posN} or 1
-local ${pN}={consts={},code={},protos={}}
-local ${ncN}=bc[${posN}];${posN}=${posN}+1
-for i=1,${ncN} do local ${ctN}=bc[${posN}];${posN}=${posN}+1
-if ${ctN}==3 then ${pN}.consts[i]=nil
-elseif ${ctN}==2 then ${pN}.consts[i]=(bc[${posN}]==1);${posN}=${posN}+1
-elseif ${ctN}==0 then local ${bN}={};for j=1,8 do ${bN}[j]=bc[${posN}];${posN}=${posN}+1 end
-local s=string.char(table.unpack(${bN}))
-${pN}.consts[i]=string.unpack and string.unpack("<d",s) or (${bN}[1]+${bN}[2]*256+${bN}[3]*65536+${bN}[4]*16777216)
-elseif ${ctN}==1 then local ${slN}=bc[${posN}];${posN}=${posN}+1;local ${chN}={};for j=1,${slN} do ${chN}[j]=string.char(bc[${posN}]);${posN}=${posN}+1 end;${pN}.consts[i]=table.concat(${chN}) end
+local function ${DE}(${bcN},${posN})
+ local ${pN}={consts={},code={},protos={},params=0,vararg=false};local ${cN}=${bcN}[${posN}];${posN}=${posN}+1
+ for ${iN}=1,${cN} do local ${tN}=${bcN}[${posN}];${posN}=${posN}+1
+  if ${tN}==3 then ${pN}.consts[${iN}]=nil
+  elseif ${tN}==2 then ${pN}.consts[${iN}]=${bcN}[${posN}]==1;${posN}=${posN}+1
+  else local ${sN}=${bcN}[${posN}];${posN}=${posN}+1;local ${bN}={};for ${jN}=1,${sN} do ${bN}[${jN}]=string.char(${bcN}[${posN}]);${posN}=${posN}+1 end;local ${vN}=table.concat(${bN});${pN}.consts[${iN}]=(${tN}==0 and tonumber(${vN}) or ${vN}) end
+ end
+ local ${cN}=${bcN}[${posN}];${posN}=${posN}+1;for ${iN}=1,${cN} do local ${sN}=${bcN}[${posN}];${posN}=${posN}+1;local ${bN}={};for ${jN}=1,${sN} do ${bN}[${jN}]=${bcN}[${posN}];${posN}=${posN}+1 end;${pN}.code[${iN}]=${bN} end
+ local ${cN}=${bcN}[${posN}];${posN}=${posN}+1;for ${iN}=1,${cN} do local ${vN};${vN},${posN}=${DE}(${bcN},${posN});${pN}.protos[${iN}]=${vN} end
+ ${pN}.params=${bcN}[${posN}];${pN}.vararg=${bcN}[${posN}+1]==1;${posN}=${posN}+2;return ${pN},${posN}
 end
-local ${niN}=bc[${posN}];${posN}=${posN}+1
-for i=1,${niN} do local ${ilN}=bc[${posN}];${posN}=${posN}+1;local ins={};for j=1,${ilN} do ins[j]=bc[${posN}];${posN}=${posN}+1 end;${pN}.code[i]=ins end
-local ${npN}=bc[${posN}];${posN}=${posN}+1
-for i=1,${npN} do local sp,np2=${DN}(bc,${posN});${pN}.protos[i]=sp;${posN}=np2 end
-return ${pN},${posN} end
-local function ${EN}(${prN},${envN},${argsN})
-${envN}=${envN} or _G;${argsN}=${argsN} or {}
-local ${stk}={};local ${sp}=0;local ${loc}={}
-for i,v in ipairs(${argsN}) do ${loc}[i]=v end
-local function ${pu}(v) ${sp}=${sp}+1;${stk}[${sp}]=v end
-local function ${po}() local v=${stk}[${sp}];${stk}[${sp}]=nil;${sp}=${sp}-1;return v end
-local function ${pk}() return ${stk}[${sp}] end
-local ${pcN}=1;local ${codeN}=${prN}.code;local ${KN}=${prN}.consts
-while ${pcN}<=#${codeN} do
-local ${ins}=${codeN}[${pcN}];local ${opN}=${ins}[1];${pcN}=${pcN}+1
-if ${opN}==0 then ${pu}(${KN}[${ins}[2]+1])
-elseif ${opN}==1 then ${pu}(nil)
-elseif ${opN}==2 then ${pu}(${ins}[2]==1)
-elseif ${opN}==3 then ${pu}(${loc}[${ins}[2]+1])
-elseif ${opN}==4 then ${loc}[${ins}[2]+1]=${po}()
-elseif ${opN}==5 then ${pu}(${envN}[${KN}[${ins}[2]+1]])
-elseif ${opN}==6 then ${envN}[${KN}[${ins}[2]+1]]=${po}()
-elseif ${opN}==10 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}+${bN})
-elseif ${opN}==11 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}-${bN})
-elseif ${opN}==12 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}*${bN})
-elseif ${opN}==13 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}/${bN})
-elseif ${opN}==14 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}%${bN})
-elseif ${opN}==15 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}^${bN})
-elseif ${opN}==16 then ${pu}(-${po}())
-elseif ${opN}==17 then local ${bN}=${po}();local ${aN}=${po}();${pu}(tostring(${aN})..tostring(${bN}))
-elseif ${opN}==18 then ${pu}(#${po}())
-elseif ${opN}==20 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}==${bN})
-elseif ${opN}==21 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}~=${bN})
-elseif ${opN}==22 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}<${bN})
-elseif ${opN}==23 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}<=${bN})
-elseif ${opN}==24 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}>${bN})
-elseif ${opN}==25 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN}>=${bN})
-elseif ${opN}==26 then ${pu}(not ${po}())
-elseif ${opN}==27 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN} and ${bN})
-elseif ${opN}==28 then local ${bN}=${po}();local ${aN}=${po}();${pu}(${aN} or ${bN})
-elseif ${opN}==30 then ${pcN}=${ins}[2]+1
-elseif ${opN}==31 then if not ${po}() then ${pcN}=${ins}[2]+1 end
-elseif ${opN}==32 then if ${po}() then ${pcN}=${ins}[2]+1 end
-elseif ${opN}==40 then ${pu}({})
-elseif ${opN}==41 then local ${vN}=${po}();local t=${pk}();t[${KN}[${ins}[3]+1]]=${vN}
-elseif ${opN}==42 then local t=${po}();${pu}(t[${KN}[${ins}[3]+1]])
-elseif ${opN}==43 then local ${vN}=${po}();local t=${pk}();t[${ins}[3]]=${vN}
-elseif ${opN}==44 then local k=${po}();local t=${po}();${pu}(t[k])
-elseif ${opN}==50 then local sp2=${prN}.protos[${ins}[2]+1];${pu}(function(...) return ${EN}(sp2,${envN},{...}) end)
-elseif ${opN}==51 then local ${acN}=${ins}[2];local ${nrN}=${ins}[3];local ${caN}={};for i=${acN},1,-1 do ${caN}[i]=${po}() end;local ${fn}=${po}();local ${rN}={${fn}(table.unpack(${caN}))};for i=1,${nrN} do ${pu}(${rN}[i]) end
-elseif ${opN}==52 then local ${nN}=${ins}[2];local ${rN}={};for i=${nN},1,-1 do ${rN}[i]=${po}() end;return table.unpack(${rN})
-elseif ${opN}==53 then for _,v in ipairs(${argsN}) do ${pu}(v) end
-elseif ${opN}==60 then ${po}()
-elseif ${opN}==61 then ${pu}(${pk}())
-end end end
-local ${prN}=${DN}(bc);${EN}(${prN},_G,{}) end
-${vmN}(${bcN})`;
+local function ${EX}(${pN},${frameN},${argsN})
+ local ${stk}={};local ${sp}=0;local ${pcN}=1;local ${codeN}=${pN}.code;local ${KN}=${pN}.consts;local ${resN}={};local ${nretN}=0
+ local function push(v) ${sp}=${sp}+1;${stk}[${sp}]=v end
+ local function pop() local v=${stk}[${sp}];${stk}[${sp}]=nil;${sp}=${sp}-1;return v end
+ local function walk(d) local f=${frameN};for ${jN}=1,d do f=f.outer end;return f end
+ for ${iN},v in ipairs(${argsN} or {}) do ${frameN}.loc[${iN}]=v end
+ while ${pcN}<=#${codeN} do
+  local ${ins}=${codeN}[${pcN}];local ${opN}=${ins}[1];${pcN}=${pcN}+1
+  if ${opN}==0 then push(${KN}[${ins}[2]+1])
+  elseif ${opN}==1 then push(nil)
+  elseif ${opN}==2 then push(${ins}[2]==1)
+  elseif ${opN}==3 then push(${frameN}.loc[${ins}[2]+1])
+  elseif ${opN}==4 then ${frameN}.loc[${ins}[2]+1]=pop()
+  elseif ${opN}==5 then push(${frameN}.env[${KN}[${ins}[2]+1]])
+  elseif ${opN}==6 then ${frameN}.env[${KN}[${ins}[2]+1]]=pop()
+  elseif ${opN}==7 then local ${tmpN}=walk(${ins}[2]);push(${tmpN}.loc[${ins}[3]+1])
+  elseif ${opN}==8 then local ${tmpN}=walk(${ins}[2]);${tmpN}.loc[${ins}[3]+1]=pop()
+  elseif ${opN}==10 then local ${bN}=pop();local ${aN}=pop();push(${aN}+${bN})
+  elseif ${opN}==11 then local ${bN}=pop();local ${aN}=pop();push(${aN}-${bN})
+  elseif ${opN}==12 then local ${bN}=pop();local ${aN}=pop();push(${aN}*${bN})
+  elseif ${opN}==13 then local ${bN}=pop();local ${aN}=pop();push(${aN}/${bN})
+  elseif ${opN}==14 then local ${bN}=pop();local ${aN}=pop();push(${aN}%${bN})
+  elseif ${opN}==15 then local ${bN}=pop();local ${aN}=pop();push(${aN}^${bN})
+  elseif ${opN}==16 then push(-pop())
+  elseif ${opN}==17 then local ${bN}=pop();local ${aN}=pop();push(tostring(${aN})..tostring(${bN}))
+  elseif ${opN}==18 then push(#pop())
+  elseif ${opN}==20 then local ${bN}=pop();local ${aN}=pop();push(${aN}==${bN})
+  elseif ${opN}==21 then local ${bN}=pop();local ${aN}=pop();push(${aN}~=${bN})
+  elseif ${opN}==22 then local ${bN}=pop();local ${aN}=pop();push(${aN}<${bN})
+  elseif ${opN}==23 then local ${bN}=pop();local ${aN}=pop();push(${aN}<=${bN})
+  elseif ${opN}==24 then local ${bN}=pop();local ${aN}=pop();push(${aN}>${bN})
+  elseif ${opN}==25 then local ${bN}=pop();local ${aN}=pop();push(${aN}>=${bN})
+  elseif ${opN}==26 then push(not pop())
+  elseif ${opN}==27 then local ${bN}=pop();local ${aN}=pop();push(${aN} and ${bN})
+  elseif ${opN}==28 then local ${bN}=pop();local ${aN}=pop();push(${aN} or ${bN})
+  elseif ${opN}==30 then ${pcN}=${ins}[2]+1
+  elseif ${opN}==31 then if not pop() then ${pcN}=${ins}[2]+1 end
+  elseif ${opN}==32 then if pop() then ${pcN}=${ins}[2]+1 end
+  elseif ${opN}==40 then push({})
+  elseif ${opN}==41 then local ${vN}=pop();local ${tN}=${stk}[${sp}];${tN}[${KN}[${ins}[3]+1]]=${vN}
+  elseif ${opN}==42 then local ${tN}=pop();push(${tN}[${KN}[${ins}[3]+1]])
+  elseif ${opN}==43 then local ${vN}=pop();local ${tN}=${stk}[${sp}];${tN}[${ins}[3]]=${vN}
+  elseif ${opN}==44 then local ${kN}=pop();local ${tN}=pop();push(${tN}[${kN}])
+  elseif ${opN}==50 then push({__vm=true,p=${pN}.protos[${ins}[2]+1],outer=${frameN},env=${frameN}.env})
+  elseif ${opN}==51 then
+   local ${aN}={};for ${jN}=${ins}[2],1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}
+   if type(${fnN})=="table" and ${fnN}.__vm then ${outN}=${EX}(${fnN}.p,{loc={},outer=${fnN}.outer,env=${fnN}.env,args=${aN}},${aN}) else ${outN}=table.pack(${fnN}(table.unpack(${aN}))) end
+   local ${cN}=${outN}.n or #${outN};if ${ins}[3]==-1 then for ${jN}=1,${cN} do push(${outN}[${jN}]) end else for ${jN}=1,${ins}[3] do push(${outN}[${jN}]) end end
+  elseif ${opN}==52 then
+   ${nretN}=${ins}[2];if ${nretN}<0 then ${nretN}=${sp} end;for ${jN}=${nretN},1,-1 do ${resN}[${jN}]=pop() end;return{n=${nretN},v=${resN}}
+  elseif ${opN}==53 then for ${jN},${vN} in ipairs(${frameN}.args or {}) do push(${vN}) end
+  elseif ${opN}==60 then pop()
+  elseif ${opN}==61 then push(${stk}[${sp}])
+  elseif ${opN}==62 then local ${aN}=pop();local ${bN}=pop();push(${aN});push(${bN}) end
+ end
+ return{n=0,v={}}
+end
+local ${pN}=${DE}(${bcN},1);${EX}(${pN},{loc={},outer=nil,env=_G,args={}},{} )`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

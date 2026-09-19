@@ -25,8 +25,14 @@ self.onmessage=function(e){
     if(opts.o_poly) step('Polymorphic XOR',L_poly);
     if(opts.o_scope)step('Scope bomb',L_scope);
     if(opts.o_flow) step('Control flow mangle',L_flow);
-    if(opts.o_wrap) step('Loadstring wrap',L_wrap);
-    if(opts.o_bytes)step('Byte array encode',L_bytes);
+    if(opts.o_wrap){
+      if(mode==='vm') lg('Loadstring wrap skipped in VM mode — the VM executes bytecode directly.');
+      else step('Loadstring wrap',L_wrap);
+    }
+    if(opts.o_bytes){
+      if(mode==='vm') lg('Byte-array loader skipped in VM mode — keeping the output load-free.');
+      else step('Byte array encode',L_bytes);
+    }
 
     let out=compact(code);
     if(targetBytes>0&&out.length<targetBytes){lg('Padding...');out=pad(out,targetBytes);lg('Padded → '+fmtB(out.length));}

@@ -12,7 +12,7 @@
 <p class="sub">Custom bytecode compiler · VM pipeline · Modular build</p>
 
 <div class="warn-box">
-  <b>VM Mode:</b> Your script is compiled to custom bytecode and executed by an embedded virtual machine.
+  <b>VM Mode:</b> Your script is compiled to custom bytecode and executed by an embedded virtual machine interpreter.
   A <code>load()</code> hook sees opaque bytecode numbers — not your source. Covers ~95% of Roblox scripts.
   Complex metatable patterns or pcall-heavy scripts may need the fallback mode.
 </div>
@@ -32,11 +32,11 @@
 
 <div class="sec">Mode</div>
 <div class="g2">
-  <label class="opt on" id="card_vm" data-mode="vm"><input type="radio" name="mode" id="mode_vm" checked><span class="dot"></span>VM mode<span class="bx bn">STRONGEST</span></label>
-  <label class="opt" id="card_fallback" data-mode="fallback"><input type="radio" name="mode" id="mode_fallback"><span class="dot"></span>Fallback mode<span class="bx bf">v4 layers</span></label>
+  <label class="opt on" id="card_vm" data-mode="vm"><input type="radio" name="mode" id="mode_vm" checked><span class="dot"></span>VM mode</label>
+  <label class="opt" id="card_fallback" data-mode="fallback"><input type="radio" name="mode" id="mode_fallback"><span class="dot"></span>Fallback mode</label>
 </div>
 
-<div class="sec">Wrapping layers <span style="font-weight:400;text-transform:none;font-size:10px">(applied after VM compilation)</span></div>
+<div class="sec">Post-compile transforms <span style="font-weight:400;text-transform:none;font-size:10px">(VM-safe layers only)</span></div>
 <div class="g2">
   <label class="opt on" data-toggle="o_var"><input type="checkbox" id="o_var" checked><span class="dot"></span>Variable mangling</label>
   <label class="opt on" data-toggle="o_junk"><input type="checkbox" id="o_junk" checked><span class="dot"></span>Stealthy junk</label>
@@ -120,11 +120,11 @@ end</textarea>
 
 <!-- ABOUT -->
 <div class="pnl" id="pnl_about">
-<label class="lbl">Why VM mode breaks the ceiling</label>
+<label class="lbl">How VM mode is built</label>
 <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:13px;font-size:12px;line-height:1.8;color:var(--mu)">
-  <b style="color:var(--tx)">Previous ceiling:</b> every obfuscation approach that uses <code>load()</code> can be defeated by hooking <code>load</code> globally and printing its argument. One line of Lua reveals the decoded source regardless of how many XOR/byte-array layers wrapped it.<br><br>
-  <b style="color:var(--tx)">VM mode:</b> your script is compiled to a custom 39-opcode bytecode format by a JavaScript compiler. The output contains a <b>Lua virtual machine</b> (~150 lines) and an obfuscated bytecode number array. There is no <code>load()</code> call on source anywhere. A hook on <code>load</code> sees the VM booting — not your script.<br><br>
-  <b style="color:var(--tx)">To reverse VM mode</b>, an attacker must: understand the VM instruction set, reverse the rolling-XOR bytecode decryption, deserialize the custom proto format, reconstruct the control flow from opcodes, and then figure out what the reconstructed logic does. That's a multi-hour job even for skilled reversers.
+  <b style="color:var(--tx)">Old loader model:</b> every obfuscation approach that uses <code>load()</code> can be defeated by hooking <code>load</code> globally and printing its argument. One line of Lua reveals the decoded source regardless of how many XOR/byte-array layers wrapped it.<br><br>
+  <b style="color:var(--tx)">VM mode:</b> the JavaScript compiler turns the script into a custom instruction stream. The final Lua output contains an interpreter, a deserializer, captured closure state, and the encoded instruction stream. The original source is never passed into the VM runtime. There is no <code>load()</code> call on source anywhere. A hook on <code>load</code> sees the VM booting — not your script.<br><br>
+  <b style="color:var(--tx)">To analyze VM mode</b>, a reverser has to understand the custom instruction set, decode the bytecode container, follow the VM dispatch loop, and reconstruct the original control flow and data operations. That's a multi-hour job even for skilled reversers.
 </div>
 
 <label class="lbl" style="margin-top:14px">Architecture</label>
@@ -132,13 +132,13 @@ end</textarea>
   Source Lua<br>
   <span style="color:var(--ac)">↓ JS Lexer + Recursive-descent Parser</span><br>
   AST<br>
-  <span style="color:var(--ac)">↓ Bytecode compiler (39 opcodes)</span><br>
+  <span style="color:var(--ac)">↓ Bytecode compiler (42 opcodes)</span><br>
   Bytecode array [numbers]<br>
   <span style="color:var(--ac)">↓ Rolling-XOR encryption (seed derived, never static)</span><br>
   Encrypted bytecode<br>
   <span style="color:var(--ac)">↓ Emit: Lua VM + encrypted bytecode table</span><br>
   VM Lua source<br>
-  <span style="color:var(--ac)">↓ v4 pipeline: variable mangle + junk + XOR + scope + flow + loadstring + byte array</span><br>
+  <span style="color:var(--ac)">↓ Optional post-VM transforms; VM mode keeps loadstring/byte-array loaders disabled</span><br>
   <span style="color:var(--ok)">Final single-line output — no load() on source</span>
 </div>
 
@@ -155,7 +155,7 @@ end</textarea>
 </div>
 </div>
 </div>
-<footer>Lua Obfuscator v5 VM Edition · Custom bytecode compiler · 39-opcode VM · No load() on source · Modular build</footer>
+<footer>Lua Obfuscator v5 VM Edition · Custom bytecode compiler · 42-opcode VM · Modular build</footer>
 
 
 <script src="/js/app.js" defer></script>

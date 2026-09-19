@@ -1,36 +1,30 @@
-# Lua Obfuscator v5 — Modular Build
+# ZumObf v5 — Modular VM
 
-The dashboard is split into separate frontend and compiler files so changes are isolated and easier to debug.
+A browser-based Lua/Luau obfuscation project with a custom compiler and stack virtual machine.
 
-## Structure
+## Layout
+
+- `public/index.html` — dashboard markup only
+- `public/css/style.css` — dashboard styling
+- `public/js/app.js` — UI, worker control, tests, download handling
+- `public/js/worker.js` — background compilation pipeline
+- `public/js/compiler.js` — lexer, parser, bytecode compiler, serializer, VM emitter
+- `tests/compile-smoke.js` — local compiler/VM smoke tests
+
+## VM pipeline
+
+The VM path does not compile the original source into a Lua string and then execute that string. The JavaScript compiler emits a custom instruction stream with constants and child prototypes. The output contains a Lua interpreter that deserializes and dispatches those instructions.
+
+The VM currently includes local/global/upvalue access, closures, captured outer frames, arithmetic and comparison operators, control-flow jumps, tables, field/index operations, calls with fixed or all return values, varargs, multiple assignment support, method calls, and a 42-opcode instruction set.
+
+VM mode deliberately skips the source-reloading `loadstring` and byte-array loader layers. Those transforms remain available for fallback mode.
+
+## Local smoke test
+
+Run with Node.js from the project root:
 
 ```text
-public/
-├── index.html          # Dashboard markup only
-├── css/
-│   └── style.css       # Dashboard styling
-└── js/
-    ├── app.js          # UI, controls, tests, worker communication
-    ├── compiler.js     # Lexer, parser, bytecode compiler, VM emitter, transforms
-    └── worker.js       # Web Worker entry point
+node tests/compile-smoke.js
 ```
 
-## Runtime
-
-`app.js` starts `/js/worker.js`. The worker loads `compiler.js` with `importScripts()` and keeps compilation off the UI thread.
-
-## Parser fixes included
-
-- Compound assignments: `+=`, `-=`, `*=`, `/=`, `%=`
-- Typed locals and function signatures
-- Type declarations
-- Dotted and colon method declarations
-- Multi-variable generic `for`
-- Multi-variable assignment such as `a, b = ...`
-- Compound field assignments
-
-## UI
-
-The dashboard no longer contains compiler or worker source in `index.html`. Inline event handlers were removed and UI events are bound from `app.js`.
-
-The interface keeps the existing functionality while using a simpler, restrained presentation with no decorative emoji UI elements.
+The smoke test verifies representative compiler paths and checks that generated VM output does not embed the input source as a `load()` payload.
