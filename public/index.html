@@ -316,7 +316,9 @@ class Compiler{
       const end=this.here();this.patch(jf,1,end);for(const b of this.breaks)this.patch(b,1,end);this.breaks=sb;
     }
     else if(tk.t===TK.FOR){
-      p.next();const name=p.expect(TK.NAME).v;
+      p.next();const names=[p.expect(TK.NAME).v];
+      while(p.peek().t===TK.COMMA){p.next();names.push(p.expect(TK.NAME).v);}
+      const name=names[0];
       if(p.peek().t===TK.ASSIGN){
         p.next();this.compileExpr(p);p.expect(TK.COMMA);this.compileExpr(p);
         let step=false;if(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);step=true;}
@@ -335,29 +337,27 @@ class Compiler{
         for(const b of this.breaks)this.patch(b,1,end);this.breaks=sb;
       } else {
         p.expect('in');this.compileExpr(p);p.expect('do');
-        // Generic for: call iterator expression with 0 args to get (iter_fn, state, ctrl)
-        // Then each iteration: call iter_fn(state, ctrl) → new ctrl + loop vars
+        // Generic for: iterator expression yields (iter_fn, state, ctrl).
+        // Each iteration yields one value per loop variable; the first value
+        // becomes the control variable for the next iterator call.
         const iS=this.locals.length;
-        // iter expr result: push (iter_fn, state, ctrl) — CALL(0,3)
-        // Patch the last CALL's nret to 3 to get all 3 returns
         const lastCall=this.code[this.code.length-1];
         if(lastCall&&lastCall[0]===OP.CALL){lastCall[2]=3;}
-        this.pushLocal('__ctrl');this.emit(OP.STORE_VAR,iS+2);
-        this.pushLocal('__state');this.emit(OP.STORE_VAR,iS+1);
         this.pushLocal('__iter');this.emit(OP.STORE_VAR,iS);
-        this.pushLocal(name);this.emit(OP.LOAD_NIL);this.emit(OP.STORE_VAR,iS+3);
+        this.pushLocal('__state');this.emit(OP.STORE_VAR,iS+1);
+        this.pushLocal('__ctrl');this.emit(OP.STORE_VAR,iS+2);
+        for(let k=0;k<names.length;k++){this.pushLocal(names[k]);this.emit(OP.LOAD_NIL);this.emit(OP.STORE_VAR,iS+3+k);}
         const top=this.here();
-        // call iter_fn(state, ctrl) → returns new ctrl value (and possibly more)
         this.emit(OP.LOAD_VAR,iS);
         this.emit(OP.LOAD_VAR,iS+1);
         this.emit(OP.LOAD_VAR,iS+2);
-        this.emit(OP.CALL,2,1);
-        // check if result is nil → end loop
+        this.emit(OP.CALL,2,names.length);
+        // First returned value is the iterator control value. Nil ends the loop.
         this.emit(OP.DUP);this.emit(OP.LOAD_NIL);this.emit(OP.EQ);
         const jt=this.emit(OP.JMP_TRUE,0);
-        // store result as loop var AND update ctrl
-        this.emit(OP.DUP);this.emit(OP.STORE_VAR,iS+2);// update ctrl
-        this.emit(OP.STORE_VAR,iS+3);// store as loop variable
+        // Store returned loop values in reverse so their stack order is preserved.
+        for(let k=names.length-1;k>=0;k--)this.emit(OP.STORE_VAR,iS+3+k);
+        this.emit(OP.LOAD_VAR,iS+3);this.emit(OP.STORE_VAR,iS+2);
         const sb=this.breaks;this.breaks=[];
         this.depth++;while(!['end',TK.EOF].includes(p.peek().t))this.compileStat(p);this.popScope();this.depth--;
         p.expect('end');this.emit(OP.JMP,top);
