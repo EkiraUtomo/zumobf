@@ -1,14 +1,14 @@
 // ══════════════════════════════════════════════════════════════════════════════
 // LEXER
 // ══════════════════════════════════════════════════════════════════════════════
-const TK={NUM:'NUM',STR:'STR',NAME:'NAME',TRUE:'true',FALSE:'false',NIL:'nil',AND:'and',OR:'or',NOT:'not',LOCAL:'local',FUNCTION:'function',IF:'if',THEN:'then',ELSE:'else',ELSEIF:'elseif',END:'end',WHILE:'while',DO:'do',FOR:'for',IN:'in',REPEAT:'repeat',UNTIL:'until',RETURN:'return',BREAK:'break',DOTDOT:'..',DOTDOTDOT:'...',EQ:'==',NEQ:'~=',LTE:'<=',GTE:'>=',LT:'<',GT:'>',ASSIGN:'=',ADDASSIGN:'+=',SUBASSIGN:'-=',MULASSIGN:'*=',DIVASSIGN:'/=',MODASSIGN:'%=',PLUS:'+',MINUS:'-',STAR:'*',SLASH:'/',PERCENT:'%',CARET:'^',HASH:'#',DOT:'.',COLON:':',SEMI:';',COMMA:',',LPAREN:'(',RPAREN:')',LBRACKET:'[',RBRACKET:']',LBRACE:'{',RBRACE:'}',EOF:'EOF'};
-const KW=new Set(['and','or','not','local','function','if','then','else','elseif','end','while','do','for','in','repeat','until','return','break','true','false','nil']);
-function lex(src){const toks=[];let i=0;while(i<src.length){if(/\s/.test(src[i])){i++;continue;}if(src[i]==='-'&&src[i+1]==='-'){if(src[i+2]==='['&&src[i+3]==='['){i+=4;while(i<src.length&&!(src[i]===']'&&src[i+1]===']'))i++;i+=2;}else{while(i<src.length&&src[i]!=='\n')i++;}continue;}if(src[i]==='['&&src[i+1]==='['){i+=2;let s='';while(i<src.length&&!(src[i]===']'&&src[i+1]===']')){s+=src[i++];}i+=2;toks.push({t:TK.STR,v:s});continue;}if(src[i]==='"'||src[i]==="'"){const q=src[i++];let s='';while(i<src.length&&src[i]!==q){if(src[i]==='\\'){i++;const e=src[i++];if(e==='n')s+='\n';else if(e==='t')s+='\t';else if(e==='r')s+='\r';else if(e==='\\')s+='\\';else if(e==='"')s+='"';else if(e==="'")s+="'";else if(/\d/.test(e)){let n=e;if(/\d/.test(src[i]))n+=src[i++];if(/\d/.test(src[i]))n+=src[i++];s+=String.fromCharCode(parseInt(n));}else s+=e;}else s+=src[i++];}i++;toks.push({t:TK.STR,v:s});continue;}if(/\d/.test(src[i])||(src[i]==='.'&&/\d/.test(src[i+1]))){let n='';if(src[i]==='0'&&(src[i+1]==='x'||src[i+1]==='X')){n='0x';i+=2;while(i<src.length&&/[0-9a-fA-F]/.test(src[i]))n+=src[i++];}else{while(i<src.length&&(/\d/.test(src[i])||src[i]==='.'||src[i]==='e'||src[i]==='E'))n+=src[i++];}toks.push({t:TK.NUM,v:Number(n)});continue;}if(/[a-zA-Z_]/.test(src[i])){let n='';while(i<src.length&&/\w/.test(src[i]))n+=src[i++];toks.push({t:KW.has(n)?n:TK.NAME,v:n});continue;}const three=src.slice(i,i+3);if(three==='...'){toks.push({t:TK.DOTDOTDOT,v:'...'});i+=3;continue;}const two=src.slice(i,i+2);const cmap={'+=':TK.ADDASSIGN,'-=':TK.SUBASSIGN,'*=':TK.MULASSIGN,'/=':TK.DIVASSIGN,'%=':TK.MODASSIGN};if(cmap[two]){toks.push({t:cmap[two],v:two});i+=2;continue;}const dmap={'==':TK.EQ,'~=':TK.NEQ,'<=':TK.LTE,'>=':TK.GTE,'..':TK.DOTDOT};if(dmap[two]){toks.push({t:dmap[two],v:two});i+=2;continue;}const smap={'=':TK.ASSIGN,'+':TK.PLUS,'-':TK.MINUS,'*':TK.STAR,'/':TK.SLASH,'%':TK.PERCENT,'^':TK.CARET,'#':TK.HASH,'.':TK.DOT,':':TK.COLON,';':TK.SEMI,',':TK.COMMA,'(':TK.LPAREN,')':TK.RPAREN,'[':TK.LBRACKET,']':TK.RBRACKET,'{':TK.LBRACE,'}':TK.RBRACE,'<':TK.LT,'>':TK.GT};if(smap[src[i]]){toks.push({t:smap[src[i]],v:src[i]});i++;continue;}i++;}toks.push({t:TK.EOF,v:null});return toks;}
+const TK={NUM:'NUM',STR:'STR',NAME:'NAME',TRUE:'true',FALSE:'false',NIL:'nil',AND:'and',OR:'or',NOT:'not',LOCAL:'local',FUNCTION:'function',IF:'if',THEN:'then',ELSE:'else',ELSEIF:'elseif',END:'end',WHILE:'while',DO:'do',FOR:'for',IN:'in',REPEAT:'repeat',UNTIL:'until',RETURN:'return',BREAK:'break',CONTINUE:'continue',DOTDOT:'..',DOTDOTDOT:'...',EQ:'==',NEQ:'~=',LTE:'<=',GTE:'>=',LT:'<',GT:'>',ASSIGN:'=',ADDASSIGN:'+=',SUBASSIGN:'-=',MULASSIGN:'*=',DIVASSIGN:'/=',MODASSIGN:'%=',PLUS:'+',MINUS:'-',STAR:'*',SLASH:'/',PERCENT:'%',CARET:'^',IDIV:'//',BAND:'&',BOR:'|',BXOR:'~',SHL:'<<',SHR:'>>',HASH:'#',DOT:'.',COLON:':',SEMI:';',COMMA:',',LPAREN:'(',RPAREN:')',LBRACKET:'[',RBRACKET:']',LBRACE:'{',RBRACE:'}',EOF:'EOF'};
+const KW=new Set(['and','or','not','local','function','if','then','else','elseif','end','while','do','for','in','repeat','until','return','break','continue','true','false','nil']);
+function lex(src){const toks=[];let i=0;while(i<src.length){if(/\s/.test(src[i])){i++;continue;}if(src[i]==='-'&&src[i+1]==='-'){if(src[i+2]==='['&&src[i+3]==='['){i+=4;while(i<src.length&&!(src[i]===']'&&src[i+1]===']'))i++;i+=2;}else{while(i<src.length&&src[i]!=='\n')i++;}continue;}if(src[i]==='['&&src[i+1]==='['){i+=2;let s='';while(i<src.length&&!(src[i]===']'&&src[i+1]===']')){s+=src[i++];}i+=2;toks.push({t:TK.STR,v:s});continue;}if(src[i]==='"'||src[i]==="'"){const q=src[i++];let s='';while(i<src.length&&src[i]!==q){if(src[i]==='\\'){i++;const e=src[i++];if(e==='n')s+='\n';else if(e==='t')s+='\t';else if(e==='r')s+='\r';else if(e==='\\')s+='\\';else if(e==='"')s+='"';else if(e==="'")s+="'";else if(/\d/.test(e)){let n=e;if(/\d/.test(src[i]))n+=src[i++];if(/\d/.test(src[i]))n+=src[i++];s+=String.fromCharCode(parseInt(n));}else s+=e;}else s+=src[i++];}i++;toks.push({t:TK.STR,v:s});continue;}if(/\d/.test(src[i])||(src[i]==='.'&&/\d/.test(src[i+1]))){let n='';if(src[i]==='0'&&(src[i+1]==='x'||src[i+1]==='X')){n='0x';i+=2;while(i<src.length&&/[0-9a-fA-F]/.test(src[i]))n+=src[i++];}else{while(i<src.length&&(/\d/.test(src[i])||src[i]==='.'||src[i]==='e'||src[i]==='E'))n+=src[i++];}toks.push({t:TK.NUM,v:Number(n)});continue;}if(/[a-zA-Z_]/.test(src[i])){let n='';while(i<src.length&&/\w/.test(src[i]))n+=src[i++];toks.push({t:KW.has(n)?n:TK.NAME,v:n});continue;}const three=src.slice(i,i+3);if(three==='...'){toks.push({t:TK.DOTDOTDOT,v:'...'});i+=3;continue;}const two=src.slice(i,i+2);const cmap={'+=':TK.ADDASSIGN,'-=':TK.SUBASSIGN,'*=':TK.MULASSIGN,'/=':TK.DIVASSIGN,'%=':TK.MODASSIGN};if(cmap[two]){toks.push({t:cmap[two],v:two});i+=2;continue;}const dmap={'==':TK.EQ,'~=':TK.NEQ,'<=':TK.LTE,'>=':TK.GTE,'..':TK.DOTDOT,'//':TK.IDIV,'<<':TK.SHL,'>>':TK.SHR};if(dmap[two]){toks.push({t:dmap[two],v:two});i+=2;continue;}const smap={'=':TK.ASSIGN,'+':TK.PLUS,'-':TK.MINUS,'*':TK.STAR,'/':TK.SLASH,'%':TK.PERCENT,'^':TK.CARET,'#':TK.HASH,'&':TK.BAND,'|':TK.BOR,'~':TK.BXOR,'.':TK.DOT,':':TK.COLON,';':TK.SEMI,',':TK.COMMA,'(':TK.LPAREN,')':TK.RPAREN,'[':TK.LBRACKET,']':TK.RBRACKET,'{':TK.LBRACE,'}':TK.RBRACE,'<':TK.LT,'>':TK.GT};if(smap[src[i]]){toks.push({t:smap[src[i]],v:src[i]});i++;continue;}i++;}toks.push({t:TK.EOF,v:null});return toks;}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // OPCODES
 // ══════════════════════════════════════════════════════════════════════════════
-const OP={LOAD_K:0,LOAD_NIL:1,LOAD_BOOL:2,LOAD_VAR:3,STORE_VAR:4,LOAD_GLOBAL:5,STORE_GLOBAL:6,LOAD_UPVALUE:7,STORE_UPVALUE:8,ADD:10,SUB:11,MUL:12,DIV:13,MOD:14,POW:15,UNM:16,CONCAT:17,LEN:18,EQ:20,NEQ:21,LT:22,LTE:23,GT:24,GTE:25,NOT:26,AND:27,OR:28,JMP:30,JMP_FALSE:31,JMP_TRUE:32,NEW_TABLE:40,SET_FIELD:41,GET_FIELD:42,SET_INDEX:43,GET_INDEX:44,MAKE_CLOSURE:50,CALL:51,RETURN:52,VARARG:53,POP:60,DUP:61,SWAP:62};
+const OP={LOAD_K:0,LOAD_NIL:1,LOAD_BOOL:2,LOAD_VAR:3,STORE_VAR:4,LOAD_GLOBAL:5,STORE_GLOBAL:6,LOAD_UPVALUE:7,STORE_UPVALUE:8,ADD:10,SUB:11,MUL:12,DIV:13,MOD:14,POW:15,UNM:16,CONCAT:17,LEN:18,EQ:20,NEQ:21,LT:22,LTE:23,GT:24,GTE:25,NOT:26,AND:27,OR:28,JMP:30,JMP_FALSE:31,JMP_TRUE:32,NEW_TABLE:40,SET_FIELD:41,GET_FIELD:42,SET_INDEX:43,GET_INDEX:44,MAKE_CLOSURE:50,CALL:51,RETURN:52,VARARG:53,POP:60,DUP:61,SWAP:62,IDIV:63,BAND:64,BOR:65,BXOR:66,BNOT:67,SHL:68,SHR:69,CALL_VAR:70,DUP2:71};
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COMPILER
@@ -75,10 +75,13 @@ class Compiler{
         const li=this.findLocal(name);if(li>=0)this.emit(OP.STORE_VAR,li);else this.emit(OP.STORE_GLOBAL,this.addConst(name));
       }else{
         const root=parts[0];
-        this.emit(OP.LOAD_GLOBAL,this.addConst(root));
-        this.compileFunction(p,method);
+        const rli=this.findLocal(root);
+        if(rli>=0)this.emit(OP.LOAD_VAR,rli);
+        else {const rup=this.resolveUpvalue(root);if(rup)this.emit(OP.LOAD_UPVALUE,rup.depth,rup.slot);else this.emit(OP.LOAD_GLOBAL,this.addConst(root));}
         for(let i=1;i<parts.length-1;i++)this.emit(OP.GET_FIELD,-1,this.addConst(parts[i]));
+        this.compileFunction(p,method);
         this.emit(OP.SET_FIELD,-1,this.addConst(parts[parts.length-1]));
+        this.emit(OP.POP);
       }
     }
     else if(tk.t===TK.IF){
@@ -91,9 +94,9 @@ class Compiler{
     }
     else if(tk.t===TK.WHILE){
       p.next();const top=this.here();this.compileExpr(p);p.expect('do');
-      const jf=this.emit(OP.JMP_FALSE,0);const sb=this.breaks;this.breaks=[];
+      const jf=this.emit(OP.JMP_FALSE,0);const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
       this.compileBlock(p);p.expect('end');this.emit(OP.JMP,top);
-      const end=this.here();this.patch(jf,1,end);for(const b of this.breaks)this.patch(b,1,end);this.breaks=sb;
+      const end=this.here();this.patch(jf,1,end);for(const b of this.breaks)this.patch(b,1,end);for(const c of this.continues)this.patch(c,1,top);this.breaks=sb;this.continues=sc;
     }
     else if(tk.t===TK.FOR){
       p.next();const names=[p.expect(TK.NAME).v];
@@ -109,12 +112,12 @@ class Compiler{
         this.pushLocal(name);this.emit(OP.STORE_VAR,iS);
         p.expect('do');const top=this.here();
         this.emit(OP.LOAD_VAR,iS);this.emit(OP.LOAD_VAR,iS+1);this.emit(OP.LTE);
-        const jf=this.emit(OP.JMP_FALSE,0);const sb=this.breaks;this.breaks=[];
+        const jf=this.emit(OP.JMP_FALSE,0);const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
         this.depth++;while(!['end',TK.EOF].includes(p.peek().t))this.compileStat(p);this.popScope();this.depth--;
         p.expect('end');
         this.emit(OP.LOAD_VAR,iS);this.emit(OP.LOAD_VAR,iS+2);this.emit(OP.ADD);this.emit(OP.STORE_VAR,iS);
         this.emit(OP.JMP,top);const end=this.here();this.patch(jf,1,end);
-        for(const b of this.breaks)this.patch(b,1,end);this.breaks=sb;
+        for(const b of this.breaks)this.patch(b,1,end);for(const c of this.continues)this.patch(c,1,top);this.breaks=sb;this.continues=sc;
       } else {
         p.expect('in');this.compileExpr(p);p.expect('do');
         // Generic for: iterator expression yields (iter_fn, state, ctrl).
@@ -138,16 +141,16 @@ class Compiler{
         // Store returned loop values in reverse so their stack order is preserved.
         for(let k=names.length-1;k>=0;k--)this.emit(OP.STORE_VAR,iS+3+k);
         this.emit(OP.LOAD_VAR,iS+3);this.emit(OP.STORE_VAR,iS+2);
-        const sb=this.breaks;this.breaks=[];
+        const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
         this.depth++;while(!['end',TK.EOF].includes(p.peek().t))this.compileStat(p);this.popScope();this.depth--;
         p.expect('end');this.emit(OP.JMP,top);
-        const end=this.here();this.patch(jt,1,end);for(const b of this.breaks)this.patch(b,1,end);this.breaks=sb;
+        const end=this.here();this.patch(jt,1,end);for(const b of this.breaks)this.patch(b,1,end);for(const c of this.continues)this.patch(c,1,top);this.breaks=sb;this.continues=sc;
       }
     }
     else if(tk.t===TK.REPEAT){
-      p.next();const top=this.here();const sb=this.breaks;this.breaks=[];
+      p.next();const top=this.here();const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
       this.compileBlock(p);p.expect('until');this.compileExpr(p);this.emit(OP.JMP_FALSE,top);
-      const end=this.here();for(const b of this.breaks)this.patch(b,1,end);this.breaks=sb;
+      const end=this.here();for(const b of this.breaks)this.patch(b,1,end);for(const c of this.continues)this.patch(c,1,top);this.breaks=sb;this.continues=sc;
     }
     else if(tk.t===TK.DO){p.next();this.compileBlock(p);p.expect('end');}
     else if(tk.t===TK.RETURN){
@@ -155,11 +158,12 @@ class Compiler{
       if(![TK.EOF,'end','else','elseif','until'].includes(p.peek().t)){
         this.compileExpr(p);n=1;
         if(p.peek().t===TK.COMMA){while(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);n++;}}
-        else {const last=this.code[this.code.length-1];if(last&&last[0]===OP.CALL){last[2]=255;n=255;}}
+        else {const last=this.code[this.code.length-1];if(last&&(last[0]===OP.CALL||last[0]===OP.VARARG)){if(last[0]===OP.CALL)last[2]=-1;n=-1;}}
       }
       this.emit(OP.RETURN,n);
     }
     else if(tk.t===TK.BREAK){p.next();const b=this.emit(OP.JMP,0);this.breaks.push(b);}
+    else if(tk.t===TK.CONTINUE){p.next();const c=this.emit(OP.JMP,0);this.continues.push(c);}
     else{
       if(p.peek().t===TK.NAME&&p.peekAt(1).t===TK.DOT&&p.peekAt(2).t===TK.NAME&&[TK.ADDASSIGN,TK.SUBASSIGN,TK.MULASSIGN,TK.DIVASSIGN,TK.MODASSIGN].includes(p.peekAt(3).t)){
         const root=p.next().v;p.next();const field=p.next().v;const opTk=p.next().t;
@@ -173,6 +177,14 @@ class Compiler{
   }
 
   compileExprStat(p){
+    const assignOps=[TK.ASSIGN,TK.ADDASSIGN,TK.SUBASSIGN,TK.MULASSIGN,TK.DIVASSIGN,TK.MODASSIGN];
+    const bopMap={[TK.ADDASSIGN]:OP.ADD,[TK.SUBASSIGN]:OP.SUB,[TK.MULASSIGN]:OP.MUL,[TK.DIVASSIGN]:OP.DIV,[TK.MODASSIGN]:OP.MOD};
+    const emitName=name=>{
+      const li=this.findLocal(name);
+      if(li>=0)this.emit(OP.LOAD_VAR,li);
+      else {const up=this.resolveUpvalue(name);if(up)this.emit(OP.LOAD_UPVALUE,up.depth,up.slot);else this.emit(OP.LOAD_GLOBAL,this.addConst(name));}
+    };
+
     // Multiple assignment: a, b, c = ...
     if(p.peek().t===TK.NAME&&p.peekAt(1).t===TK.COMMA){
       const targets=[];
@@ -187,14 +199,14 @@ class Compiler{
       p.expect(TK.ASSIGN);
       const rhs=[];
       while(true){
-        this.compileExpr(p);
-        rhs.push(this.code[this.code.length-1]);
+        this.compileExpr(p);rhs.push(this.code[this.code.length-1]);
         if(p.peek().t!==TK.COMMA)break;
         p.next();
       }
       const last=rhs[rhs.length-1];
-      if(last&&last[0]===OP.CALL)last[2]=Math.max(1,targets.length-rhs.length+1);
-      const produced=rhs.length-1+(last&&last[0]===OP.CALL?Math.max(1,targets.length-rhs.length+1):1);
+      const spread=(last&&last[0]===OP.CALL&&p.peek().t!==TK.COMMA)?Math.max(1,targets.length-rhs.length+1):1;
+      if(last&&last[0]===OP.CALL&&p.peek().t!==TK.COMMA)last[2]=spread;
+      const produced=rhs.length-1+spread;
       for(let i=produced;i>targets.length;i--)this.emit(OP.POP);
       for(let i=produced;i<targets.length;i++)this.emit(OP.LOAD_NIL);
       for(let i=targets.length-1;i>=0;i--){
@@ -205,8 +217,53 @@ class Compiler{
       }
       return;
     }
+
+    // Safe dotted member assignment, including Roblox Instance properties and self.x.
+    if(p.peek().t===TK.NAME){
+      const parts=[p.peek().v];
+      let k=1;
+      while(p.peekAt(k).t===TK.DOT&&p.peekAt(k+1).t===TK.NAME){parts.push(p.peekAt(k+1).v);k+=2;}
+      const opTk=p.peekAt(k).t;
+      if(parts.length>1&&assignOps.includes(opTk)){
+        p.next();
+        for(let i=1;i<parts.length;i++){p.next();p.expect(TK.NAME);}
+        emitName(parts[0]);
+        for(let i=1;i<parts.length-1;i++)this.emit(OP.GET_FIELD,-1,this.addConst(parts[i]));
+        p.expect(opTk);
+        if(opTk===TK.ASSIGN){
+          this.compileExpr(p);this.emit(OP.SET_FIELD,-1,this.addConst(parts[parts.length-1]));this.emit(OP.POP);
+        }else{
+          this.emit(OP.DUP);this.emit(OP.GET_FIELD,-1,this.addConst(parts[parts.length-1]));
+          this.compileExpr(p);this.emit(bopMap[opTk]);
+          this.emit(OP.SET_FIELD,-1,this.addConst(parts[parts.length-1]));this.emit(OP.POP);
+        }
+        return;
+      }
+
+      // Safe indexed assignment: t[k] = v / t[k] += v.
+      if(p.peekAt(1).t===TK.LBRACKET){
+        let d=0,j=1;
+        for(;p.peekAt(j).t!==TK.EOF;j++){
+          const tt=p.peekAt(j).t;
+          if(tt===TK.LBRACKET)d++;
+          else if(tt===TK.RBRACKET){d--;if(d===0)break;}
+        }
+        const op=p.peekAt(j+1).t;
+        if(assignOps.includes(op)){
+          const root=p.next().v;p.expect(TK.LBRACKET);emitName(root);this.compileExpr(p);p.expect(TK.RBRACKET);p.expect(op);
+          if(op===TK.ASSIGN){this.compileExpr(p);this.emit(OP.SET_INDEX,-1,-1);this.emit(OP.POP);}
+          else{
+            // Indexed compound assignment uses a dedicated DUP2 arrangement.
+            this.emit(OP.DUP2);this.emit(OP.GET_INDEX);
+            this.compileExpr(p);this.emit(bopMap[op]);this.emit(OP.SET_INDEX,-1,-1);this.emit(OP.POP);
+          }
+          return;
+        }
+      }
+    }
+
     this.compileExpr(p);
-    if(p.peek().t===TK.ASSIGN||[TK.ADDASSIGN,TK.SUBASSIGN,TK.MULASSIGN,TK.DIVASSIGN,TK.MODASSIGN].includes(p.peek().t)){
+    if(assignOps.includes(p.peek().t)){
       const opTk=p.next().t;
       const last=this.code[this.code.length-1];
       if(opTk===TK.ASSIGN){
@@ -214,18 +271,15 @@ class Compiler{
         if(last[0]===OP.LOAD_VAR)this.emit(OP.STORE_VAR,last[1]);
         else if(last[0]===OP.LOAD_UPVALUE)this.emit(OP.STORE_UPVALUE,last[1],last[2]);
         else if(last[0]===OP.LOAD_GLOBAL)this.emit(OP.STORE_GLOBAL,last[1]);
-        else if(last[0]===OP.GET_FIELD)this.emit(OP.SET_FIELD,-1,last[2]);
         else this.emit(OP.POP);
       }else{
-        const bop={[TK.ADDASSIGN]:OP.ADD,[TK.SUBASSIGN]:OP.SUB,[TK.MULASSIGN]:OP.MUL,[TK.DIVASSIGN]:OP.DIV,[TK.MODASSIGN]:OP.MOD}[opTk];
-        this.compileExpr(p);this.emit(bop);
+        const bop=bopMap[opTk];this.compileExpr(p);this.emit(bop);
         if(last[0]===OP.LOAD_VAR)this.emit(OP.STORE_VAR,last[1]);
         else if(last[0]===OP.LOAD_UPVALUE)this.emit(OP.STORE_UPVALUE,last[1],last[2]);
         else if(last[0]===OP.LOAD_GLOBAL)this.emit(OP.STORE_GLOBAL,last[1]);
-        else if(last[0]===OP.GET_FIELD)this.emit(OP.SET_FIELD,-1,last[2]);
         else this.emit(OP.POP);
       }
-    } else {
+    }else{
       const last=this.code[this.code.length-1];
       if(last&&last[0]!==OP.CALL)this.emit(OP.POP);
     }
@@ -257,8 +311,28 @@ class Compiler{
   }
 
   compileExpr(p){this.compileOr(p);}
-  compileOr(p){this.compileAnd(p);while(p.peek().t==='or'){p.next();this.compileAnd(p);this.emit(OP.OR);}}
-  compileAnd(p){this.compileCompare(p);while(p.peek().t==='and'){p.next();this.compileCompare(p);this.emit(OP.AND);}}
+  compileOr(p){
+    this.compileAnd(p);
+    while(p.peek().t==='or'){
+      p.next();
+      this.emit(OP.DUP);
+      const jt=this.emit(OP.JMP_TRUE,0);
+      this.emit(OP.POP);
+      this.compileAnd(p);
+      this.patch(jt,1,this.here());
+    }
+  }
+  compileAnd(p){
+    this.compileCompare(p);
+    while(p.peek().t==='and'){
+      p.next();
+      this.emit(OP.DUP);
+      const jf=this.emit(OP.JMP_FALSE,0);
+      this.emit(OP.POP);
+      this.compileCompare(p);
+      this.patch(jf,1,this.here());
+    }
+  }
   compileCompare(p){
     this.compileConcat(p);
     const m={[TK.EQ]:OP.EQ,[TK.NEQ]:OP.NEQ,[TK.LT]:OP.LT,[TK.LTE]:OP.LTE,[TK.GT]:OP.GT,[TK.GTE]:OP.GTE};
@@ -284,17 +358,24 @@ class Compiler{
     while(true){
       if(p.peek().t===TK.DOT){p.next();const k=p.expect(TK.NAME).v;this.emit(OP.GET_FIELD,-1,this.addConst(k));}
       else if(p.peek().t===TK.LBRACKET){p.next();this.compileExpr(p);p.expect(TK.RBRACKET);this.emit(OP.GET_INDEX);}
-      else if(p.peek().t===TK.COLON){p.next();const m=p.expect(TK.NAME).v;this.emit(OP.DUP);this.emit(OP.GET_FIELD,-1,this.addConst(m));this.emit(OP.SWAP);const ac=this.compileArgs(p,true);this.emit(OP.CALL,ac,1);}
-      else if([TK.LPAREN,TK.LBRACE,TK.STR].includes(p.peek().t)){const ac=this.compileArgs(p,false);this.emit(OP.CALL,ac,1);}
+      else if(p.peek().t===TK.COLON){p.next();const m=p.expect(TK.NAME).v;this.emit(OP.DUP);this.emit(OP.GET_FIELD,-1,this.addConst(m));this.emit(OP.SWAP);const ac=this.compileArgs(p,true);if(ac<0)this.emit(OP.CALL_VAR,-ac-1,1);else this.emit(OP.CALL,ac,1);}
+      else if([TK.LPAREN,TK.LBRACE,TK.STR].includes(p.peek().t)){const ac=this.compileArgs(p,false);if(ac<0)this.emit(OP.CALL_VAR,-ac-1,1);else this.emit(OP.CALL,ac,1);}
       else break;
     }
   }
   compileArgs(p,hasSelf){
-    let ac=hasSelf?1:0;
-    if(p.peek().t===TK.LPAREN){p.next();while(p.peek().t!==TK.RPAREN&&p.peek().t!==TK.EOF){this.compileExpr(p);ac++;if(p.peek().t===TK.COMMA)p.next();}p.expect(TK.RPAREN);}
-    else if(p.peek().t===TK.LBRACE){this.compileTable(p);ac++;}
+    let ac=hasSelf?1:0,hasVararg=false;
+    if(p.peek().t===TK.LPAREN){
+      p.next();
+      while(p.peek().t!==TK.RPAREN&&p.peek().t!==TK.EOF){
+        if(p.peek().t===TK.DOTDOTDOT){p.next();hasVararg=true;break;}
+        this.compileExpr(p);ac++;
+        if(p.peek().t===TK.COMMA)p.next();
+      }
+      p.expect(TK.RPAREN);
+    } else if(p.peek().t===TK.LBRACE){this.compileTable(p);ac++;}
     else if(p.peek().t===TK.STR){this.emit(OP.LOAD_K,this.addConst(p.next().v));ac++;}
-    return ac;
+    return hasVararg?-(ac+1):ac;
   }
   compilePrimary(p){
     const tk=p.peek();
@@ -313,7 +394,7 @@ class Compiler{
   compileTable(p){
     p.expect(TK.LBRACE);this.emit(OP.NEW_TABLE);let idx=1;
     while(p.peek().t!==TK.RBRACE&&p.peek().t!==TK.EOF){
-      if(p.peek().t===TK.LBRACKET){p.next();this.compileExpr(p);p.expect(TK.RBRACKET);p.expect(TK.ASSIGN);this.compileExpr(p);this.emit(OP.SET_INDEX);}
+      if(p.peek().t===TK.LBRACKET){p.next();this.compileExpr(p);p.expect(TK.RBRACKET);p.expect(TK.ASSIGN);this.compileExpr(p);this.emit(OP.SET_INDEX,-1,-1);}
       else if(p.peek().t===TK.NAME&&p.peekAt(1).t===TK.ASSIGN){const k=p.next().v;p.next();this.compileExpr(p);this.emit(OP.SET_FIELD,-1,this.addConst(k));}
       else{this.compileExpr(p);this.emit(OP.SET_INDEX,-1,idx++);}
       if(p.peek().t===TK.COMMA||p.peek().t===TK.SEMI)p.next();
@@ -360,22 +441,42 @@ function luaEsc(s){return s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\
 
 function emitVMLua(bc){
   const seed=rndI(1,250);
-  const enc=bc.map((v,i)=>(v^((seed+i*7)%251))&0xFF);
+  const enc=[];
+  for(let i=0;i<bc.length;i++){
+    let x=bc[i];
+    const zz=x<0?(-x*2-1):x*2;
+    let v=zz;
+    while(v>=128){enc.push((v%128)|128);v=Math.floor(v/128);}
+    enc.push(v);
+  }
+  for(let i=0;i<enc.length;i++)enc[i]=(enc[i]^((seed+i*17)%251))&255;
+
   const vmN=id(10),DE=id(3),EX=id(3),bcN=id(4),sdN=id(4),iN=id(3),posN=id(4);
   const frameN=id(4),stk=id(4),sp=id(3),pcN=id(3),codeN=id(4),KN=id(3),ins=id(3),opN=id(3);
   const bN=id(3),vN=id(3),tN=id(3),kN=id(3),aN=id(3),fnN=id(3),argsN=id(4),resN=id(4),nretN=id(3),outN=id(4);
-  const cN=id(3),upN=id(3),tmpN=id(3),pN=id(3),jN=id(3),idxN=id(3),sN=id(3);
-  return `local ${sdN}=${seed};local ${bcN}={${enc.join(',')}};for ${iN}=1,#${bcN} do ${bcN}[${iN}]=(${bcN}[${iN}])~(((${sdN}+(${iN}-1)*7)%251)) end
-local function ${DE}(${bcN},${posN})
- local ${pN}={consts={},code={},protos={},params=0,vararg=false};local ${cN}=${bcN}[${posN}];${posN}=${posN}+1
- for ${iN}=1,${cN} do local ${tN}=${bcN}[${posN}];${posN}=${posN}+1
-  if ${tN}==3 then ${pN}.consts[${iN}]=nil
-  elseif ${tN}==2 then ${pN}.consts[${iN}]=${bcN}[${posN}]==1;${posN}=${posN}+1
-  else local ${sN}=${bcN}[${posN}];${posN}=${posN}+1;local ${bN}={};for ${jN}=1,${sN} do ${bN}[${jN}]=string.char(${bcN}[${posN}]);${posN}=${posN}+1 end;local ${vN}=table.concat(${bN});${pN}.consts[${iN}]=(${tN}==0 and tonumber(${vN}) or ${vN}) end
+  const cN=id(3),tmpN=id(3),pN=id(3),jN=id(3),sN=id(3),readN=id(3),zzN=id(3),unpackN=id(3),explicitN=id(3),totalN=id(3);
+
+  return `local ${sdN}=${seed};local ${bcN}={${enc.join(',')}};for ${iN}=1,#${bcN} do ${bcN}[${iN}]=(${bcN}[${iN}])~(((${sdN}+(${iN}-1)*17)%251)) end
+local ${unpackN}=table.unpack or unpack
+local function ${readN}(${bcN},${posN})
+ local ${zzN}=0;local ${sN}=0
+ while true do
+  local ${vN}=${bcN}[${posN}] or 0;${posN}=${posN}+1;${zzN}=${zzN}+(${vN}%128)*(2^${sN});
+  if ${vN}<128 then break end;${sN}=${sN}+7
  end
- local ${cN}=${bcN}[${posN}];${posN}=${posN}+1;for ${iN}=1,${cN} do local ${sN}=${bcN}[${posN}];${posN}=${posN}+1;local ${bN}={};for ${jN}=1,${sN} do ${bN}[${jN}]=${bcN}[${posN}];${posN}=${posN}+1 end;${pN}.code[${iN}]=${bN} end
- local ${cN}=${bcN}[${posN}];${posN}=${posN}+1;for ${iN}=1,${cN} do local ${vN};${vN},${posN}=${DE}(${bcN},${posN});${pN}.protos[${iN}]=${vN} end
- ${pN}.params=${bcN}[${posN}];${pN}.vararg=${bcN}[${posN}+1]==1;${posN}=${posN}+2;return ${pN},${posN}
+ if ${zzN}%2==1 then return -(${zzN}+1)/2,${posN} end
+ return ${zzN}/2,${posN}
+end
+local function ${DE}(${bcN},${posN})
+ local ${pN}={consts={},code={},protos={},params=0,vararg=false};local ${cN};${cN},${posN}=${readN}(${bcN},${posN})
+ for ${iN}=1,${cN} do local ${tN};${tN},${posN}=${readN}(${bcN},${posN})
+  if ${tN}==3 then ${pN}.consts[${iN}]=nil
+  elseif ${tN}==2 then local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${pN}.consts[${iN}]=${vN}==1
+  else local ${sN};${sN},${posN}=${readN}(${bcN},${posN});local ${bN}={};for ${jN}=1,${sN} do local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${bN}[${jN}]=string.char(${vN}) end;local ${vN}=table.concat(${bN});${pN}.consts[${iN}]=(${tN}==0 and tonumber(${vN}) or ${vN}) end
+ end
+ ${cN},${posN}=${readN}(${bcN},${posN});for ${iN}=1,${cN} do local ${sN};${sN},${posN}=${readN}(${bcN},${posN});local ${bN}={};for ${jN}=1,${sN} do local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${bN}[${jN}]=${vN} end;${pN}.code[${iN}]={${unpackN}(${bN})} end
+ ${cN},${posN}=${readN}(${bcN},${posN});for ${iN}=1,${cN} do local ${vN};${vN},${posN}=${DE}(${bcN},${posN});${pN}.protos[${iN}]=${vN} end
+ ${pN}.params,${posN}=${readN}(${bcN},${posN});local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${pN}.vararg=${vN}==1;return ${pN},${posN}
 end
 local function ${EX}(${pN},${frameN},${argsN})
  local ${stk}={};local ${sp}=0;local ${pcN}=1;local ${codeN}=${pN}.code;local ${KN}=${pN}.consts;local ${resN}={};local ${nretN}=0
@@ -418,23 +519,32 @@ local function ${EX}(${pN},${frameN},${argsN})
   elseif ${opN}==40 then push({})
   elseif ${opN}==41 then local ${vN}=pop();local ${tN}=${stk}[${sp}];${tN}[${KN}[${ins}[3]+1]]=${vN}
   elseif ${opN}==42 then local ${tN}=pop();push(${tN}[${KN}[${ins}[3]+1]])
-  elseif ${opN}==43 then local ${vN}=pop();local ${tN}=${stk}[${sp}];${tN}[${ins}[3]]=${vN}
+  elseif ${opN}==43 then local ${vN}=pop();local ${kN}=pop();local ${tN}=${stk}[${sp}];${tN}[${kN}]=${vN}
   elseif ${opN}==44 then local ${kN}=pop();local ${tN}=pop();push(${tN}[${kN}])
   elseif ${opN}==50 then push({__vm=true,p=${pN}.protos[${ins}[2]+1],outer=${frameN},env=${frameN}.env})
-  elseif ${opN}==51 then
-   local ${aN}={};for ${jN}=${ins}[2],1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}
-   if type(${fnN})=="table" and ${fnN}.__vm then ${outN}=${EX}(${fnN}.p,{loc={},outer=${fnN}.outer,env=${fnN}.env,args=${aN}},${aN}) else ${outN}=table.pack(${fnN}(table.unpack(${aN}))) end
+  elseif ${opN}==51 then local ${aN}={};for ${jN}=${ins}[2],1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}
+   if type(${fnN})=="table" and ${fnN}.__vm then ${outN}=${EX}(${fnN}.p,{loc={},outer=${fnN}.outer,env=${fnN}.env,args=${aN}},${aN}) else ${outN}=table.pack(${fnN}(${unpackN}(${aN}))) end
    local ${cN}=${outN}.n or #${outN};if ${ins}[3]==-1 then for ${jN}=1,${cN} do push(${outN}[${jN}]) end else for ${jN}=1,${ins}[3] do push(${outN}[${jN}]) end end
-  elseif ${opN}==52 then
-   ${nretN}=${ins}[2];if ${nretN}<0 then ${nretN}=${sp} end;for ${jN}=${nretN},1,-1 do ${resN}[${jN}]=pop() end;return{n=${nretN},v=${resN}}
+  elseif ${opN}==52 then ${nretN}=${ins}[2];if ${nretN}<0 then ${nretN}=${sp} end;for ${jN}=${nretN},1,-1 do ${resN}[${jN}]=pop() end;return{n=${nretN},v=${resN}}
   elseif ${opN}==53 then for ${jN},${vN} in ipairs(${frameN}.args or {}) do push(${vN}) end
   elseif ${opN}==60 then pop()
   elseif ${opN}==61 then push(${stk}[${sp}])
-  elseif ${opN}==62 then local ${aN}=pop();local ${bN}=pop();push(${aN});push(${bN}) end
+  elseif ${opN}==62 then local ${aN}=pop();local ${bN}=pop();push(${aN});push(${bN})
+  elseif ${opN}==63 then local ${bN}=pop();local ${aN}=pop();push(math.floor(${aN}/${bN}))
+  elseif ${opN}==64 then local ${bN}=pop();local ${aN}=pop();push(bit32.band(${aN},${bN}))
+  elseif ${opN}==65 then local ${bN}=pop();local ${aN}=pop();push(bit32.bor(${aN},${bN}))
+  elseif ${opN}==66 then local ${bN}=pop();local ${aN}=pop();push(bit32.bxor(${aN},${bN}))
+  elseif ${opN}==67 then push(bit32.bnot(pop()))
+  elseif ${opN}==68 then local ${bN}=pop();local ${aN}=pop();push(bit32.lshift(${aN},${bN}))
+  elseif ${opN}==69 then local ${bN}=pop();local ${aN}=pop();push(bit32.rshift(${aN},${bN}))
+  elseif ${opN}==70 then local ${explicitN}=${ins}[2];local ${totalN}=${explicitN}+#(${frameN}.args or {});local ${aN}={};for ${jN}=${totalN},1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}
+   if type(${fnN})=="table" and ${fnN}.__vm then ${outN}=${EX}(${fnN}.p,{loc={},outer=${fnN}.outer,env=${fnN}.env,args=${aN}},${aN}) else ${outN}=table.pack(${fnN}(${unpackN}(${aN}))) end
+   local ${cN}=${outN}.n or #${outN};for ${jN}=1,${cN} do push(${outN}[${jN}]) end
+  elseif ${opN}==71 then local ${aN}=pop();local ${bN}=pop();push(${bN});push(${aN});push(${bN}) end
  end
  return{n=0,v={}}
 end
-local ${pN}=${DE}(${bcN},1);${EX}(${pN},{loc={},outer=nil,env=_G,args={}},{} )`;
+local ${pN},${posN}=${DE}(${bcN},1);${EX}(${pN},{loc={},outer=nil,env=_G,args={}},{} )`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -494,13 +604,13 @@ function L_flow(code){
 }
 function L_wrap(code){
   const tag='@_'+Math.random().toString(36).slice(2,9);
-  return`assert(load("${luaEsc(code)}","${tag}"))()`;
+  return`local __L=(loadstring or load);assert(__L("${luaEsc(code)}","${tag}"))()`;
 }
 function L_bytes(code){
   const arr=id(),iv=id(4),cv=id(4);
   const bytes=[];for(let i=0;i<code.length;i++)bytes.push(code.charCodeAt(i));
   const chunks=[];for(let i=0;i<bytes.length;i+=300)chunks.push(bytes.slice(i,i+300).join(','));
-  return`local ${arr}={${chunks.join(',')}};local ${cv}={};for ${iv}=1,#${arr} do ${cv}[${iv}]=string.char(${arr}[${iv}]) end;assert(load(table.concat(${cv})))()`;
+  return`local ${arr}={${chunks.join(',')}};local ${cv}={};for ${iv}=1,#${arr} do ${cv}[${iv}]=string.char(${arr}[${iv}]) end;local __L=(loadstring or load);assert(__L(table.concat(${cv})))()`;
 }
 function L_fallbackFull(code){
   // v4-style full obfuscation for fallback mode (no VM)

@@ -11,11 +11,7 @@
 <h1>Lua <span>Obfuscator</span></h1>
 <p class="sub">Custom bytecode compiler · VM pipeline · Modular build</p>
 
-<div class="warn-box">
-  <b>VM Mode:</b> Your script is compiled to custom bytecode and executed by an embedded virtual machine interpreter.
-  A <code>load()</code> hook sees opaque bytecode numbers — not your source. Covers ~95% of Roblox scripts.
-  Complex metatable patterns or pcall-heavy scripts may need the fallback mode.
-</div>
+<div class="notice">VM mode compiles the input into custom bytecode and runs it through the bundled VM.</div>
 
 <div class="tabs">
   <div class="tab active" data-tab="obf">Obfuscator</div>
@@ -31,35 +27,64 @@
 -- Supports: locals, functions, if/else, while, for, tables, string ops, math, print, etc."></textarea>
 
 <div class="sec">Mode</div>
-<div class="g2">
-  <label class="opt on" id="card_vm" data-mode="vm"><input type="radio" name="mode" id="mode_vm" checked><span class="dot"></span>VM mode</label>
-  <label class="opt" id="card_fallback" data-mode="fallback"><input type="radio" name="mode" id="mode_fallback"><span class="dot"></span>Fallback mode</label>
+<div class="modebar">
+  <label class="mode active" id="card_vm" data-mode="vm"><input type="radio" name="mode" id="mode_vm" checked><span>VM</span><small>custom bytecode</small></label>
+  <label class="mode" id="card_fallback" data-mode="fallback"><input type="radio" name="mode" id="mode_fallback"><span>Fallback</span><small>source transforms</small></label>
 </div>
 
-<div class="sec">Post-compile transforms <span style="font-weight:400;text-transform:none;font-size:10px">(VM-safe layers only)</span></div>
-<div class="g2">
-  <label class="opt on" data-toggle="o_var"><input type="checkbox" id="o_var" checked><span class="dot"></span>Variable mangling</label>
-  <label class="opt on" data-toggle="o_junk"><input type="checkbox" id="o_junk" checked><span class="dot"></span>Stealthy junk</label>
-  <label class="opt on" data-toggle="o_dead"><input type="checkbox" id="o_dead" checked><span class="dot"></span>Dead branches</label>
-  <label class="opt on" data-toggle="o_poly"><input type="checkbox" id="o_poly" checked><span class="dot"></span>Polymorphic XOR</label>
-  <label class="opt on" data-toggle="o_scope"><input type="checkbox" id="o_scope" checked><span class="dot"></span>Scope bomb</label>
-  <label class="opt on" data-toggle="o_flow"><input type="checkbox" id="o_flow" checked><span class="dot"></span>Control flow mangle</label>
-  <label class="opt on" data-toggle="o_wrap"><input type="checkbox" id="o_wrap" checked><span class="dot"></span>Loadstring wrap</label>
-  <label class="opt on" data-toggle="o_bytes"><input type="checkbox" id="o_bytes" checked><span class="dot"></span>Byte array encode</label>
+<div class="sec">Output</div>
+<div class="formatbar">
+  <label class="fmt active"><input type="radio" name="format" value="normal" checked><span>Normal</span><small>readable</small></label>
+  <label class="fmt"><input type="radio" name="format" value="compact"><span>Compact</span><small>less whitespace</small></label>
+  <label class="fmt"><input type="radio" name="format" value="one"><span>One line</span><small>paste ready</small></label>
 </div>
 
-<label class="lbl">Junk intensity</label>
-<div class="slrow">
-  <input type="range" id="junk_lvl" min="1" max="5" value="2">
-  <span class="slv" id="jlbl">2/5</span>
+<div class="advanced-head">
+  <button type="button" class="advanced-toggle" id="advancedToggle">Advanced <span id="advancedArrow">+</span></button>
+</div>
+<div class="advanced" id="advancedPanel" hidden>
+  <div class="sec">Transforms</div>
+  <div class="g2">
+    <label class="opt on" data-toggle="o_var"><input type="checkbox" id="o_var" checked><span class="dot"></span>Variable mangling</label>
+    <label class="opt on" data-toggle="o_junk"><input type="checkbox" id="o_junk" checked><span class="dot"></span>Junk code</label>
+    <label class="opt on" data-toggle="o_dead"><input type="checkbox" id="o_dead" checked><span class="dot"></span>Dead branches</label>
+    <label class="opt on" data-toggle="o_poly"><input type="checkbox" id="o_poly" checked><span class="dot"></span>Polymorphic XOR</label>
+    <label class="opt on" data-toggle="o_scope"><input type="checkbox" id="o_scope" checked><span class="dot"></span>Scope layers</label>
+    <label class="opt on" data-toggle="o_flow"><input type="checkbox" id="o_flow" checked><span class="dot"></span>Control flow</label>
+    <label class="opt on" data-toggle="o_wrap"><input type="checkbox" id="o_wrap"><span class="dot"></span>Load wrapper</label>
+    <label class="opt on" data-toggle="o_bytes"><input type="checkbox" id="o_bytes"><span class="dot"></span>Byte loader</label>
+  </div>
+
+  <div class="sec">Watermark</div>
+  <div class="watermark-row">
+    <label class="opt on" data-toggle="o_watermark"><input type="checkbox" id="o_watermark" checked><span class="dot"></span>Embedded watermark</label>
+    <input class="wm-input" id="wm_text" type="text" value="ZumObf / UwURaww" maxlength="80" aria-label="Watermark text">
+  </div>
+
+  <label class="lbl">Junk intensity</label>
+  <div class="slrow"><input type="range" id="junk_lvl" min="1" max="5" value="2"><span class="slv" id="jlbl">2/5</span></div>
+
+  <label class="lbl">Target output size <span class="optional">(optional)</span></label>
+  <div class="srow"><input type="text" id="sval" placeholder="e.g. 2, 500, 1.5"><select id="sunit"><option value="0">No target</option><option value="1024">KB</option><option value="1048576">MB</option><option value="1073741824">GB</option></select></div>
+  <div class="hint" id="snote">Pads with inert code to reach the requested size.</div>
 </div>
 
-<label class="lbl">Target output size <span style="font-weight:400;text-transform:none">(optional)</span></label>
-<div class="srow">
-  <input type="text" id="sval" placeholder="e.g. 2, 500, 1.5">
-  <select id="sunit"><option value="0">No target</option><option value="1024">KB</option><option value="1048576">MB</option><option value="1073741824">GB</option></select>
+<div class="pastefy-box" id="pastefyBox">
+  <div class="pastefy-head">
+    <div><strong>Pastefy</strong><span>Optional output upload</span></div>
+    <label class="switch"><input type="checkbox" id="pf_auto"><span></span></label>
+  </div>
+  <div class="pastefy-body">
+    <label class="lbl">Paste name</label>
+    <input class="text-input" id="pf_title" type="text" value="ZumObf output" maxlength="120">
+    <div class="pastefy-grid">
+      <div><label class="lbl">Visibility</label><select class="text-input" id="pf_visibility"><option value="UNLISTED">Unlisted</option><option value="PUBLIC">Public</option></select></div>
+      <div><label class="lbl">Folder ID <span class="optional">(optional)</span></label><input class="text-input" id="pf_folder" type="text" placeholder="Folder ID"></div>
+    </div>
+    <button type="button" class="settings-link" id="pf_settings">Pastefy API settings</button>
+    <div class="pastefy-result" id="pf_result" hidden></div>
+  </div>
 </div>
-<div class="hint" id="snote">Pads with stealthy fake functions to hit the byte target.</div>
 
 <div class="row">
   <button class="p" id="btnrun">Obfuscate</button>
@@ -84,7 +109,7 @@
   <div class="stat"><div class="sv" id="sn">—</div><div class="sl">Layers</div></div>
 </div>
 
-<label class="lbl">Output (single line — paste directly into Roblox)</label>
+<label class="lbl">Output</label>
 <textarea id="out" readonly rows="6" style="color:#a78bfa" placeholder="obfuscated output appears here..."></textarea>
 </div>
 
@@ -154,6 +179,17 @@ end</textarea>
   <span style="color:var(--mu)"># Settings → Pages → branch: main → / (root)</span>
 </div>
 </div>
+</div>
+
+<div class="modal" id="pf_modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head"><strong>Pastefy API</strong><button type="button" id="pf_close">×</button></div>
+    <label class="lbl">API token</label>
+    <input class="text-input" id="pf_token" type="password" autocomplete="off" placeholder="Paste your Pastefy API token">
+    <div class="hint">The token is used by your browser to call Pastefy. It is not included in generated Lua.</div>
+    <label class="remember"><input type="checkbox" id="pf_remember"> Remember on this device</label>
+    <div class="modal-actions"><button type="button" id="pf_clear">Clear token</button><button type="button" class="p" id="pf_save">Save</button></div>
+  </div>
 </div>
 <footer>Lua Obfuscator v5 VM Edition · Custom bytecode compiler · 42-opcode VM · Modular build</footer>
 

@@ -34,7 +34,14 @@ self.onmessage=function(e){
       else step('Byte array encode',L_bytes);
     }
 
-    let out=compact(code);
+    let out=code;
+    if(opts.watermark){
+      const wm=String(opts.watermark);
+      const enc=Array.from(wm).map(ch=>ch.charCodeAt(0)).join(',');
+      const marker='local _wm={'+enc+'}; if _wm and #_wm<0 then print(_wm) end\n';
+      out=marker+out;
+    }
+    if(opts.format==='compact'||opts.format==='one')out=compact(out);
     if(targetBytes>0&&out.length<targetBytes){lg('Padding...');out=pad(out,targetBytes);lg('Padded → '+fmtB(out.length));}
 
     self.postMessage({type:'done',result:out,n,iLen:src.length,oLen:out.length,mode});

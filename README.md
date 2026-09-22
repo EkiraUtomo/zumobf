@@ -28,3 +28,20 @@ node tests/compile-smoke.js
 ```
 
 The smoke test verifies representative compiler paths and checks that generated VM output does not embed the input source as a `load()` payload.
+
+## v6 VM correctness work
+
+The serializer now uses signed zig-zag integers with LEB128/varint encoding instead of forcing every bytecode value into 8 bits. This is important for jump targets, constant indexes, instruction counts, and negative sentinels such as `-1`.
+
+The compiler also handles LuaU `continue`, integer division and bitwise operators, short-circuit `and`/`or`, dynamic table indexes, indexed/member assignments, multiple returns, and vararg calls more explicitly.
+
+## Architecture references
+
+The implementation is original code in this repository. Its structure was cross-checked against public open-source projects for established VM/compiler patterns rather than copied wholesale:
+
+- `sudo-dava25/LuaU-obfuscator` — preprocess Luau syntax, walk an AST into custom bytecode, then generate a self-contained VM runtime.
+- `PY44N/LuaObfuscatorV2` — separate compiler/VM/minifier components and use of a bytecode interpreter as a protection layer.
+- `SYahama/Lua-Py-Obfuscator` — AST transformation pipeline, randomized identifiers, string transforms, and custom ISA concepts.
+- `0xXrer/MathOBF-lua` — custom opcode/VM structure and encoded bytecode data.
+
+These projects are references for architecture and techniques; their code is not embedded verbatim here.
