@@ -21,6 +21,12 @@ function makeW(){return new Worker('/js/worker.js');}
 
 let W=null;
 function getOpts(){const o={};document.querySelectorAll('[data-toggle]').forEach(el=>o[el.dataset.toggle]=document.getElementById(el.dataset.toggle).checked);o.watermark=getWatermark();o.format=getFormat();return o;}
+function setSt(m){document.getElementById('st').textContent=String(m);}
+function setBusy(b){const btn=document.getElementById('btnrun');btn.disabled=!!b;btn.textContent=b?'Running…':'Obfuscate';}
+function getWatermark(){const cb=document.getElementById('o_watermark');const input=document.getElementById('wm_text');return cb&&cb.checked?(input&&input.value.trim()||'ZumObf / UwURaww'):'';}
+function getFormat(){const el=document.querySelector('input[name="format"]:checked');return el?el.value:'normal';}
+function applyFormat(text,format){if(format==='compact'||format==='one')return compactClient(text);return text;}
+function compactClient(text){return String(text).replace(/\r?\n/g,' ').replace(/\t/g,' ').replace(/ {2,}/g,' ').trim();}
 
 function pfLoadToken(){
   return localStorage.getItem('zumobf.pastefy.token')||sessionStorage.getItem('zumobf.pastefy.token')||'';
