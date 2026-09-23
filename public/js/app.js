@@ -77,9 +77,39 @@ async function pfUpload(content){
     throw new Error('Could not reach the Pastefy proxy: '+(e&&e.message?e.message:'network error'));
   }
   const text=await r.text();let data={};try{data=JSON.parse(text);}catch(_){data={raw:text};}
-  if(!r.ok)throw new Error(data.message||data.error||data.raw||`Pastefy returned HTTP ${r.status}`);
+
+  // Pastefy can return structured error objects. Never let those become
+  // JavaScript's useless "[object Object]" message.
+  const describeError=(value)=>{
+    if(value==null)return '';
+    if(typeof value==='string')return value;
+    if(value instanceof Error)return value.message||String(value);
+    if(typeof value==='object'){
+      for(const k of ['message','error','detail','details','reason']){
+        if(value[k]!=null){
+          const v=describeError(value[k]);
+          if(v)return v;
+        }
+      }
+      try{return JSON.stringify(value);}
+      catch(_){return String(value);}
+    }
+    return String(value);
+  };
+
+  if(!r.ok){
+    const detail=describeError(data.message||data.error||data.details||data.detail||data.raw);
+    throw new Error(detail||`Pastefy returned HTTP ${r.status}`);
+  }
+
   const paste=data.paste||data;
-  if(!paste||typeof paste.raw_url!=='string'||!/^https?:\/\//i.test(paste.raw_url))throw new Error('Pastefy returned no valid raw_url.');
+  if(!paste||typeof paste!=='object'){
+    throw new Error('Pastefy returned an invalid response.');
+  }
+  if(typeof paste.raw_url!=='string'||!/^https?:\/\//i.test(paste.raw_url)){
+    const detail=describeError(paste.message||paste.error||paste.details);
+    throw new Error(detail||'Pastefy returned no valid raw_url.');
+  }
   const raw=paste.raw_url;
   const load=`loadstring(game:HttpGet(${JSON.stringify(raw)}))()`;
   pfShowResult(paste.title||body.title,raw,load);setSt('Pastefy upload complete — raw link and loadstring ready.');

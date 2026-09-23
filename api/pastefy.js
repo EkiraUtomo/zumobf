@@ -47,6 +47,33 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-ZumObf-Pastefy', 'v2');
+
+    if (!upstream.ok) {
+      // Keep the useful upstream payload while also exposing a stable
+      // top-level error string for the frontend.
+      const pick = (v) => {
+        if (v == null) return '';
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object') {
+          for (const k of ['message', 'error', 'detail', 'details', 'reason']) {
+            if (v[k] != null) {
+              const x = pick(v[k]);
+              if (x) return x;
+            }
+          }
+          try { return JSON.stringify(v); } catch (_) { return String(v); }
+        }
+        return String(v);
+      };
+
+      const message = pick(data.message || data.error || data.details || data.detail || data.raw);
+      return res.status(upstream.status).json({
+        error: message || `Pastefy returned HTTP ${upstream.status}`,
+        status: upstream.status,
+        upstream: data
+      });
+    }
+
     return res.status(upstream.status).json(data);
   } catch (err) {
     res.setHeader('Access-Control-Allow-Origin', '*');
