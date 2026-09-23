@@ -41,23 +41,22 @@ class Compiler{
         while(p.peek().t===TK.COMMA){p.next();names.push(p.expect(TK.NAME).v);if(p.peek().t===TK.COLON){p.next();if(p.peek().t===TK.LBRACE){this.skipTypeExpr(p);}else p.next();}}
         if(p.peek().t===TK.ASSIGN){
           p.next();
-          if(names.length>1){
-            // Check if RHS is a single function call → spread its returns
-            const beforeLen=this.code.length;
+          const rhs=[];
+          this.compileExpr(p);
+          rhs.push(this.code[this.code.length-1]);
+          while(p.peek().t===TK.COMMA){
+            p.next();
             this.compileExpr(p);
-            const afterLen=this.code.length;
-            const lastInstr=this.code[afterLen-1];
-            const rhsIsCall=(lastInstr&&lastInstr[0]===OP.CALL);
-            if(rhsIsCall&&p.peek().t!==TK.COMMA){
-              // Single call RHS: patch nret to names.length, emit STOREs below
-              lastInstr[2]=names.length;
-            } else {
-              // Multiple RHS exprs: compile remaining
-              for(let i=1;i<names.length;i++){if(p.peek().t===TK.COMMA)p.next();this.compileExpr(p);}
-            }
-          } else {
-            this.compileExpr(p);
+            rhs.push(this.code[this.code.length-1]);
           }
+          const lastInstr=rhs[rhs.length-1];
+          const remaining=Math.max(1,names.length-rhs.length+1);
+          if(lastInstr&&[OP.CALL,OP.CALL_VAR].includes(lastInstr[0])&&rhs.length===1)lastInstr[2]=names.length;
+          else if(lastInstr&&[OP.CALL,OP.CALL_VAR].includes(lastInstr[0]))lastInstr[2]=remaining;
+          else if(lastInstr&&lastInstr[0]===OP.VARARG)lastInstr[1]=remaining;
+          const producedKnown=rhs.length-1+((lastInstr&&lastInstr[0]===OP.CALL)|| (lastInstr&&lastInstr[0]===OP.VARARG)?remaining:1);
+          for(let i=producedKnown;i>names.length;i--)this.emit(OP.POP);
+          for(let i=producedKnown;i<names.length;i++)this.emit(OP.LOAD_NIL);
         } else for(const _ of names)this.emit(OP.LOAD_NIL);
         for(let i=names.length-1;i>=0;i--){this.pushLocal(names[i]);this.emit(OP.STORE_VAR,this.findLocal(names[i]));}
       }
@@ -103,21 +102,37 @@ class Compiler{
       while(p.peek().t===TK.COMMA){p.next();names.push(p.expect(TK.NAME).v);}
       const name=names[0];
       if(p.peek().t===TK.ASSIGN){
-        p.next();this.compileExpr(p);p.expect(TK.COMMA);this.compileExpr(p);
+        p.next();
+        this.compileExpr(p);p.expect(TK.COMMA);this.compileExpr(p);
         let step=false;if(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);step=true;}
         if(!step)this.emit(OP.LOAD_K,this.addConst(1));
-        const iS=this.nextLocal;
-        this.pushLocal('__stp');this.emit(OP.STORE_VAR,iS+2);
-        this.pushLocal('__lim');this.emit(OP.STORE_VAR,iS+1);
-        this.pushLocal(name);this.emit(OP.STORE_VAR,iS);
-        p.expect('do');const top=this.here();
-        this.emit(OP.LOAD_VAR,iS);this.emit(OP.LOAD_VAR,iS+1);this.emit(OP.LTE);
-        const jf=this.emit(OP.JMP_FALSE,0);const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
+        const stepSlot=this.nextLocal;this.pushLocal('__stp');this.emit(OP.STORE_VAR,stepSlot);
+        const limitSlot=this.nextLocal;this.pushLocal('__lim');this.emit(OP.STORE_VAR,limitSlot);
+        const indexSlot=this.nextLocal;this.pushLocal(name);this.emit(OP.STORE_VAR,indexSlot);
+        p.expect('do');
+        const top=this.here();
+        // Numeric-for semantics depend on the sign of the step.
+        this.emit(OP.LOAD_VAR,stepSlot);this.emit(OP.LOAD_K,this.addConst(0));this.emit(OP.LT);
+        const toDesc=this.emit(OP.JMP_TRUE,0);
+        this.emit(OP.LOAD_VAR,indexSlot);this.emit(OP.LOAD_VAR,limitSlot);this.emit(OP.LTE);
+        const ascFalse=this.emit(OP.JMP_FALSE,0);
+        const ascToBody=this.emit(OP.JMP,0);
+        const descLabel=this.here();this.patch(toDesc,1,descLabel);
+        this.emit(OP.LOAD_VAR,indexSlot);this.emit(OP.LOAD_VAR,limitSlot);this.emit(OP.GTE);
+        const descFalse=this.emit(OP.JMP_FALSE,0);
+        const body=this.here();
+        this.patch(ascToBody,1,body);
+        const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
         this.depth++;while(!['end',TK.EOF].includes(p.peek().t))this.compileStat(p);this.popScope();this.depth--;
         p.expect('end');
-        this.emit(OP.LOAD_VAR,iS);this.emit(OP.LOAD_VAR,iS+2);this.emit(OP.ADD);this.emit(OP.STORE_VAR,iS);
-        this.emit(OP.JMP,top);const end=this.here();this.patch(jf,1,end);
-        for(const b of this.breaks)this.patch(b,1,end);for(const c of this.continues)this.patch(c,1,top);this.breaks=sb;this.continues=sc;
+        const inc=this.here();
+        for(const c of this.continues)this.patch(c,1,inc);
+        this.emit(OP.LOAD_VAR,indexSlot);this.emit(OP.LOAD_VAR,stepSlot);this.emit(OP.ADD);this.emit(OP.STORE_VAR,indexSlot);
+        this.emit(OP.JMP,top);
+        const end=this.here();
+        this.patch(ascFalse,1,end);this.patch(descFalse,1,end);
+        for(const b of this.breaks)this.patch(b,1,end);
+        this.breaks=sb;this.continues=sc;
       } else {
         p.expect('in');this.compileExpr(p);p.expect('do');
         // Generic for: iterator expression yields (iter_fn, state, ctrl).
@@ -125,7 +140,7 @@ class Compiler{
         // becomes the control variable for the next iterator call.
         const iS=this.nextLocal;
         const lastCall=this.code[this.code.length-1];
-        if(lastCall&&lastCall[0]===OP.CALL){lastCall[2]=3;}
+        if(lastCall&&[OP.CALL,OP.CALL_VAR].includes(lastCall[0]))lastCall[2]=3;
         this.pushLocal('__iter');this.emit(OP.STORE_VAR,iS);
         this.pushLocal('__state');this.emit(OP.STORE_VAR,iS+1);
         this.pushLocal('__ctrl');this.emit(OP.STORE_VAR,iS+2);
@@ -149,16 +164,25 @@ class Compiler{
     }
     else if(tk.t===TK.REPEAT){
       p.next();const top=this.here();const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
-      this.compileBlock(p);p.expect('until');this.compileExpr(p);this.emit(OP.JMP_FALSE,top);
-      const end=this.here();for(const b of this.breaks)this.patch(b,1,end);for(const c of this.continues)this.patch(c,1,top);this.breaks=sb;this.continues=sc;
+      this.compileBlock(p);
+      const cond=this.here();
+      for(const c of this.continues)this.patch(c,1,cond);
+      p.expect('until');this.compileExpr(p);this.emit(OP.JMP_FALSE,top);
+      const end=this.here();for(const b of this.breaks)this.patch(b,1,end);this.breaks=sb;this.continues=sc;
     }
     else if(tk.t===TK.DO){p.next();this.compileBlock(p);p.expect('end');}
     else if(tk.t===TK.RETURN){
       p.next();let n=0;
       if(![TK.EOF,'end','else','elseif','until'].includes(p.peek().t)){
         this.compileExpr(p);n=1;
-        if(p.peek().t===TK.COMMA){while(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);n++;}}
-        else {const last=this.code[this.code.length-1];if(last&&(last[0]===OP.CALL||last[0]===OP.VARARG)){if(last[0]===OP.CALL)last[2]=-1;n=-1;}}
+        if(p.peek().t===TK.COMMA){while(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);n++;}
+          const last=this.code[this.code.length-1];
+          if(last&&(last[0]===OP.CALL||last[0]===OP.CALL_VAR||last[0]===OP.VARARG)){
+            if(last[0]===OP.CALL||last[0]===OP.CALL_VAR)last[2]=-1;
+            else last[1]=-1;
+            n=-1;
+          }
+        } else {const last=this.code[this.code.length-1];if(last&&(last[0]===OP.CALL||last[0]===OP.CALL_VAR)){last[2]=-1;n=-1;}else if(last&&last[0]===OP.VARARG){last[1]=-1;n=-1;}}
       }
       this.emit(OP.RETURN,n);
     }
@@ -281,7 +305,7 @@ class Compiler{
       }
     }else{
       const last=this.code[this.code.length-1];
-      if(last&&last[0]!==OP.CALL)this.emit(OP.POP);
+      if(last)this.emit(OP.POP);
     }
   }
   skipTypeExpr(p){
@@ -384,7 +408,7 @@ class Compiler{
     else if(tk.t==='true'){p.next();this.emit(OP.LOAD_BOOL,1);}
     else if(tk.t==='false'){p.next();this.emit(OP.LOAD_BOOL,0);}
     else if(tk.t==='nil'){p.next();this.emit(OP.LOAD_NIL);}
-    else if(tk.t===TK.DOTDOTDOT){p.next();this.emit(OP.VARARG);}
+    else if(tk.t===TK.DOTDOTDOT){p.next();this.emit(OP.VARARG,-1);}
     else if(tk.t===TK.FUNCTION){p.next();this.compileFunction(p);}
     else if(tk.t===TK.LBRACE){this.compileTable(p);}
     else if(tk.t===TK.LPAREN){p.next();this.compileExpr(p);p.expect(TK.RPAREN);}
@@ -454,7 +478,7 @@ function emitVMLua(bc){
   const vmN=id(10),DE=id(3),EX=id(3),bcN=id(4),sdN=id(4),iN=id(3),posN=id(4);
   const frameN=id(4),stk=id(4),sp=id(3),pcN=id(3),codeN=id(4),KN=id(3),ins=id(3),opN=id(3);
   const bN=id(3),vN=id(3),tN=id(3),kN=id(3),aN=id(3),fnN=id(3),argsN=id(4),resN=id(4),nretN=id(3),outN=id(4);
-  const cN=id(3),tmpN=id(3),pN=id(3),jN=id(3),sN=id(3),readN=id(3),zzN=id(3),unpackN=id(3),explicitN=id(3),totalN=id(3);
+  const cN=id(3),tmpN=id(3),pN=id(3),jN=id(3),sN=id(3),readN=id(3),zzN=id(3),unpackN=id(3),explicitN=id(3),totalN=id(3),outerN=id(4),envN=id(4),rN=id(3);
 
   return `local ${sdN}=${seed};local ${bcN}={${enc.join(',')}};for ${iN}=1,#${bcN} do ${bcN}[${iN}]=(${bcN}[${iN}])~(((${sdN}+(${iN}-1)*17)%251)) end
 local ${unpackN}=table.unpack or unpack
@@ -483,7 +507,7 @@ local function ${EX}(${pN},${frameN},${argsN})
  local function push(v) ${sp}=${sp}+1;${stk}[${sp}]=v end
  local function pop() local v=${stk}[${sp}];${stk}[${sp}]=nil;${sp}=${sp}-1;return v end
  local function walk(d) local f=${frameN};for ${jN}=1,d do f=f.outer end;return f end
- for ${iN},v in ipairs(${argsN} or {}) do ${frameN}.loc[${iN}]=v end
+ for ${iN}=1,${pN}.params do ${frameN}.loc[${iN}]=(${argsN} or {})[${iN}] end
  while ${pcN}<=#${codeN} do
   local ${ins}=${codeN}[${pcN}];local ${opN}=${ins}[1];${pcN}=${pcN}+1
   if ${opN}==0 then push(${KN}[${ins}[2]+1])
@@ -521,12 +545,11 @@ local function ${EX}(${pN},${frameN},${argsN})
   elseif ${opN}==42 then local ${tN}=pop();push(${tN}[${KN}[${ins}[3]+1]])
   elseif ${opN}==43 then local ${vN}=pop();local ${kN}=pop();local ${tN}=${stk}[${sp}];${tN}[${kN}]=${vN}
   elseif ${opN}==44 then local ${kN}=pop();local ${tN}=pop();push(${tN}[${kN}])
-  elseif ${opN}==50 then push({__vm=true,p=${pN}.protos[${ins}[2]+1],outer=${frameN},env=${frameN}.env})
-  elseif ${opN}==51 then local ${aN}={};for ${jN}=${ins}[2],1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}
-   if type(${fnN})=="table" and ${fnN}.__vm then ${outN}=${EX}(${fnN}.p,{loc={},outer=${fnN}.outer,env=${fnN}.env,args=${aN}},${aN}) else ${outN}=table.pack(${fnN}(${unpackN}(${aN}))) end
+  elseif ${opN}==50 then local ${fnN}=${pN}.protos[${ins}[2]+1];local ${outerN}=${frameN};local ${envN}=${frameN}.env;push(function(...) local ${aN}={...};local ${rN}=${EX}(${fnN},{loc={},outer=${outerN},env=${envN},args=${aN}},${aN});return ${unpackN}(${rN}.v,1,${rN}.n) end)
+  elseif ${opN}==51 then local ${aN}={};for ${jN}=${ins}[2],1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}=table.pack(${fnN}(${unpackN}(${aN})))
    local ${cN}=${outN}.n or #${outN};if ${ins}[3]==-1 then for ${jN}=1,${cN} do push(${outN}[${jN}]) end else for ${jN}=1,${ins}[3] do push(${outN}[${jN}]) end end
   elseif ${opN}==52 then ${nretN}=${ins}[2];if ${nretN}<0 then ${nretN}=${sp} end;for ${jN}=${nretN},1,-1 do ${resN}[${jN}]=pop() end;return{n=${nretN},v=${resN}}
-  elseif ${opN}==53 then for ${jN},${vN} in ipairs(${frameN}.args or {}) do push(${vN}) end
+  elseif ${opN}==53 then local ${explicitN}=${ins}[2];local ${totalN}=#(${frameN}.args or {})-${pN}.params;if ${explicitN} and ${explicitN}>=0 then ${totalN}=math.min(${totalN},${explicitN}) end;for ${jN}=1,${totalN} do push((${frameN}.args or {})[${pN}.params+${jN}]) end
   elseif ${opN}==60 then pop()
   elseif ${opN}==61 then push(${stk}[${sp}])
   elseif ${opN}==62 then local ${aN}=pop();local ${bN}=pop();push(${aN});push(${bN})
@@ -537,10 +560,9 @@ local function ${EX}(${pN},${frameN},${argsN})
   elseif ${opN}==67 then push(bit32.bnot(pop()))
   elseif ${opN}==68 then local ${bN}=pop();local ${aN}=pop();push(bit32.lshift(${aN},${bN}))
   elseif ${opN}==69 then local ${bN}=pop();local ${aN}=pop();push(bit32.rshift(${aN},${bN}))
-  elseif ${opN}==70 then local ${explicitN}=${ins}[2];local ${totalN}=${explicitN}+#(${frameN}.args or {});local ${aN}={};for ${jN}=${totalN},1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}
-   if type(${fnN})=="table" and ${fnN}.__vm then ${outN}=${EX}(${fnN}.p,{loc={},outer=${fnN}.outer,env=${fnN}.env,args=${aN}},${aN}) else ${outN}=table.pack(${fnN}(${unpackN}(${aN}))) end
-   local ${cN}=${outN}.n or #${outN};for ${jN}=1,${cN} do push(${outN}[${jN}]) end
-  elseif ${opN}==71 then local ${aN}=pop();local ${bN}=pop();push(${bN});push(${aN});push(${bN}) end
+  elseif ${opN}==70 then local ${explicitN}=${ins}[2];local ${totalN}=${explicitN}+#(${frameN}.args or {});local ${aN}={};for ${jN}=${totalN},1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}=table.pack(${fnN}(${unpackN}(${aN})))
+   local ${cN}=${outN}.n or #${outN};local ${nretN}=${ins}[3] or -1;if ${nretN}<0 then ${nretN}=${cN} end;for ${jN}=1,${nretN} do push(${outN}[${jN}]) end
+  elseif ${opN}==71 then local ${aN}=pop();local ${bN}=pop();push(${bN});push(${aN});push(${bN});push(${aN}) end
  end
  return{n=0,v={}}
 end

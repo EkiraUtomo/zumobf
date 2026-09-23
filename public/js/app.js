@@ -15,6 +15,7 @@ document.getElementById('sval').oninput=document.getElementById('sunit').onchang
 };
 
 function dataURI(t){return'data:text/plain;charset=utf-8;base64,'+btoa(unescape(encodeURIComponent(t)));}
+function copyText(v,msg){return navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v).then(()=>setSt(msg)):Promise.reject(new Error('Clipboard unavailable'));}
 function showDL(txt){const fname='obfuscated_'+Date.now()+'.lua';const a=document.getElementById('dla');a.href=dataURI(txt);a.download=fname;a.textContent=fname;document.getElementById('dlc').style.display='block';}
 function saveLua(){const v=document.getElementById('out').value;if(!v){setSt('Obfuscate first.');return;}try{const b=new Blob([v],{type:'text/plain'}),url=URL.createObjectURL(b),a=document.createElement('a');a.href=url;a.download='obfuscated_'+Date.now()+'.lua';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);setSt('Downloaded.');}catch(e){showDL(v);setSt('Tap the link below to save.');}}
 function makeW(){return new Worker('/js/worker.js');}
@@ -46,8 +47,8 @@ function pfClose(){document.getElementById('pf_modal').hidden=true;}
 function pfShowResult(title,raw,load){
   const box=document.getElementById('pf_result');box.hidden=false;
   box.innerHTML=`<div class="pr-title">Pastefy output</div><a href="${raw}" target="_blank" rel="noopener">${raw}</a><code>${load}</code><div class="pr-actions"><button type="button" id="pf_copy_raw">Copy raw</button><button type="button" id="pf_copy_load">Copy loadstring</button></div>`;
-  document.getElementById('pf_copy_raw').onclick=()=>navigator.clipboard.writeText(raw).then(()=>setSt('Raw link copied.'));
-  document.getElementById('pf_copy_load').onclick=()=>navigator.clipboard.writeText(load).then(()=>setSt('Loadstring copied.'));
+  document.getElementById('pf_copy_raw').onclick=()=>copyText(raw,'Raw link copied.').catch(()=>{prompt('Copy raw URL:',raw);});
+  document.getElementById('pf_copy_load').onclick=()=>copyText(load,'Loadstring copied.').catch(()=>{prompt('Copy loadstring:',load);});
 }
 async function pfUpload(content){
   if(!document.getElementById('pf_auto').checked)return null;
@@ -56,13 +57,32 @@ async function pfUpload(content){
   setSt('Uploading output to Pastefy...');
   const body={title:document.getElementById('pf_title').value.trim()||'ZumObf output',content,visibility:document.getElementById('pf_visibility').value,type:'LUA'};
   const folder=document.getElementById('pf_folder').value.trim();if(folder)body.folder=folder;
-  const r=await fetch('https://pastefy.app/api/v2/paste',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});
-  let data={};try{data=await r.json();}catch(_){ }
-  if(!r.ok)throw new Error(data.message||data.error||`Pastefy returned HTTP ${r.status}`);
+  const local=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+  const endpoint=local?'https://pastefy.app/api/v2/paste':'/api/pastefy';
+  const headers={'Content-Type':'application/json','Accept':'application/json'};
+  let requestBody=body;
+  if(local){
+    headers.Authorization='Bearer '+token;
+  }else{
+    requestBody={token,paste:body};
+  }
+  let r;
+  try{
+    const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),30000);
+    r=await fetch(endpoint,{method:'POST',headers,body:JSON.stringify(requestBody),signal:ctl.signal});
+    clearTimeout(timer);
+  }catch(e){
+    if(e&&e.name==='AbortError')throw new Error('Pastefy request timed out after 30 seconds.');
+    if(local)throw new Error('Direct Pastefy upload was blocked by the browser. Deploy this project to Vercel and use its /api/pastefy proxy.');
+    throw new Error('Could not reach the Pastefy proxy: '+(e&&e.message?e.message:'network error'));
+  }
+  const text=await r.text();let data={};try{data=JSON.parse(text);}catch(_){data={raw:text};}
+  if(!r.ok)throw new Error(data.message||data.error||data.raw||`Pastefy returned HTTP ${r.status}`);
   const paste=data.paste||data;
-  if(!paste.raw_url)throw new Error('Pastefy response did not contain raw_url.');
-  const load=`loadstring(game:HttpGet(${JSON.stringify(paste.raw_url)}))()`;
-  pfShowResult(paste.title||body.title,paste.raw_url,load);setSt('Uploaded to Pastefy.');
+  if(!paste||typeof paste.raw_url!=='string'||!/^https?:\/\//i.test(paste.raw_url))throw new Error('Pastefy returned no valid raw_url.');
+  const raw=paste.raw_url;
+  const load=`loadstring(game:HttpGet(${JSON.stringify(raw)}))()`;
+  pfShowResult(paste.title||body.title,raw,load);setSt('Pastefy upload complete — raw link and loadstring ready.');
   return paste;
 }
 
@@ -90,7 +110,10 @@ async function runObf(){
       document.getElementById('sx').textContent=Math.round(oLen/iLen)+'x';
       document.getElementById('sn').textContent=n+(mode==='vm'?' (VM)':' (fallback)');
       document.getElementById('stats').style.display='grid';
-      showDL(result);pfUpload(document.getElementById('out').value).catch(e=>setSt('Obfuscated, but Pastefy upload failed: '+e.message));setSt('Done — '+fmtB(oLen)+'.');setBusy(false);W=null;
+      const finalOut=document.getElementById('out').value;showDL(finalOut);
+      setSt('Obfuscated — '+fmtB(finalOut.length)+'.');
+      pfUpload(finalOut).catch(e=>setSt('Obfuscated, but Pastefy upload failed: '+e.message));
+      setBusy(false);W=null;
     }
   };
   W.onerror=function(e){setSt('Worker error: '+e.message);setBusy(false);W=null;};

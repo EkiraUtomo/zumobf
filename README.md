@@ -45,3 +45,11 @@ The implementation is original code in this repository. Its structure was cross-
 - `0xXrer/MathOBF-lua` — custom opcode/VM structure and encoded bytecode data.
 
 These projects are references for architecture and techniques; their code is not embedded verbatim here.
+
+## Current correctness status
+
+The project now tests the browser worker pipeline in addition to compiler and serializer behavior. VM closures are emitted as real Lua/Luau functions, so generated functions can be passed to normal native APIs that expect callable functions. Numeric `for` loops support ascending and descending steps, `continue` targets the correct loop phase, multiple-assignment trims/pads RHS values, and vararg/multiple-return calls propagate requested return counts.
+
+The local automated suite currently passes 25 checks across compiler smoke tests, VM stack regressions, serialization, additional semantics, worker execution, and Pastefy proxy request handling.
+
+The repository is intentionally still a custom Luau subset rather than a claim of complete language compatibility. Production validation against the exact Roblox Luau runtime should remain part of release testing.
