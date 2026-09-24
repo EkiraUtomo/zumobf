@@ -1,4 +1,62 @@
 // ── UI ────────────────────────────────────────────────────────────────────────
+
+
+// ── DIAGNOSTICS ──────────────────────────────────────────────────────────────
+const ZD={enabled:false,events:[],network:[],started:Date.now(),max:500};
+function zdNow(){return new Date().toISOString().replace('T',' ').replace('Z','');}
+function zdSafe(v){
+  if(v==null)return '';
+  if(typeof v==='string')return v;
+  try{return JSON.stringify(v,null,2);}catch(_){return String(v);}
+}
+function zdAdd(level,message,data){
+  const e={time:zdNow(),level,message,data:data===undefined?null:data};
+  ZD.events.push(e);if(ZD.events.length>ZD.max)ZD.events.shift();
+  if(ZD.enabled)zdRender();
+  return e;
+}
+function zdNet(entry){ZD.network.push(entry);if(ZD.network.length>ZD.max)ZD.network.shift();if(ZD.enabled)zdRender();}
+function zdInstall(){
+  if(window.__zumDiagInstalled)return;window.__zumDiagInstalled=true;
+  const style=document.createElement('style');style.textContent=`
+  #zumdiag{position:fixed;inset:0;z-index:99999;background:rgba(4,5,12,.88);backdrop-filter:blur(12px);display:none;padding:18px;box-sizing:border-box;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#e9e9f5}
+  #zumdiag.open{display:block}.zd-box{height:100%;max-width:1200px;margin:auto;background:#0b0c15;border:1px solid #27283a;border-radius:14px;box-shadow:0 20px 80px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow:hidden}
+  .zd-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #252638}.zd-title{font-weight:800;flex:1}.zd-badge{font-size:11px;padding:4px 7px;border-radius:999px;background:#15172a;color:#9f9cff;border:1px solid #34365a}.zd-x{border:0;background:#171827;color:#ddd;padding:7px 10px;border-radius:8px;cursor:pointer}
+  .zd-tabs{display:flex;gap:6px;padding:9px;border-bottom:1px solid #202132}.zd-tab{border:1px solid #282a3b;background:#11121d;color:#aaa;padding:7px 10px;border-radius:8px;cursor:pointer}.zd-tab.on{color:#fff;border-color:#635bff;background:#19172e}.zd-body{flex:1;overflow:auto;padding:12px}.zd-pane{display:none}.zd-pane.on{display:block}.zd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px}.zd-card{background:#10111b;border:1px solid #222438;border-radius:10px;padding:10px}.zd-k{font-size:10px;color:#777b91;text-transform:uppercase}.zd-v{margin-top:4px;white-space:pre-wrap;word-break:break-word}.zd-log{font-size:11px;line-height:1.45}.zd-row{border-bottom:1px solid #1d1f2d;padding:7px 3px}.zd-time{color:#666b80}.zd-info{color:#8f9cff}.zd-ok{color:#67e8a3}.zd-warn{color:#f6c85f}.zd-error{color:#ff7272}.zd-debug{color:#b9a8ff}.zd-pre{white-space:pre-wrap;word-break:break-word;background:#080910;border:1px solid #1c1e2b;border-radius:8px;padding:9px;margin-top:6px;max-height:320px;overflow:auto}.zd-actions{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}.zd-btn{border:1px solid #303247;background:#141624;color:#ddd;border-radius:8px;padding:7px 10px;cursor:pointer}.zd-foot{font-size:10px;color:#696d80;padding:8px 12px;border-top:1px solid #202132}
+  `;document.head.appendChild(style);
+  const root=document.createElement('div');root.id='zumdiag';root.innerHTML=`<div class="zd-box"><div class="zd-head"><div class="zd-title">ZumHub Diagnostics</div><span class="zd-badge">LIVE DEBUG</span><button class="zd-x" id="zd_close">Close</button></div><div class="zd-tabs"><button class="zd-tab on" data-zdtab="overview">Overview</button><button class="zd-tab" data-zdtab="events">Event Log</button><button class="zd-tab" data-zdtab="network">Network</button><button class="zd-tab" data-zdtab="raw">Raw JSON</button></div><div class="zd-body"><div class="zd-pane on" id="zd_overview"></div><div class="zd-pane" id="zd_events"></div><div class="zd-pane" id="zd_network"></div><div class="zd-pane" id="zd_raw"></div></div><div class="zd-foot">Type <b>zumhub diag</b> in the script input to open this panel. Sensitive tokens are never displayed.</div></div>`;document.body.appendChild(root);
+  root.querySelector('#zd_close').onclick=()=>{ZD.enabled=false;root.classList.remove('open');};
+  root.querySelectorAll('[data-zdtab]').forEach(b=>b.onclick=()=>{root.querySelectorAll('.zd-tab').forEach(x=>x.classList.remove('on'));root.querySelectorAll('.zd-pane').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.getElementById('zd_'+b.dataset.zdtab).classList.add('on');zdRender();});
+}
+function zdOpen(){zdInstall();ZD.enabled=true;document.getElementById('zumdiag').classList.add('open');zdAdd('debug','Diagnostics opened by command.');zdRender();}
+function zdCard(k,v){return `<div class="zd-card"><div class="zd-k">${k}</div><div class="zd-v">${String(v??'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>`;}
+function zdRender(){
+  if(!window.__zumDiagInstalled||!ZD.enabled)return;
+  const root=document.getElementById('zumdiag');
+  const token=!!pfLoadToken();
+  const endpoint=(location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')?'https://pastefy.app/api/v2/paste':'/api/pastefy';
+  document.getElementById('zd_overview').innerHTML=`<div class="zd-actions"><button class="zd-btn" id="zd_copy">Copy diagnostics</button><button class="zd-btn" id="zd_clear">Clear log</button><button class="zd-btn" id="zd_ping">Test proxy</button></div><div class="zd-grid">${zdCard('App URL',location.href)}${zdCard('Protocol',location.protocol)}${zdCard('User agent',navigator.userAgent)}${zdCard('Viewport',innerWidth+' × '+innerHeight+' / DPR '+devicePixelRatio)}${zdCard('Online',navigator.onLine?'yes':'no')}${zdCard('Pastefy endpoint',endpoint)}${zdCard('Pastefy token',token?'configured (hidden)':'not configured')}${zdCard('Pastefy auto upload',document.getElementById('pf_auto')?.checked?'enabled':'disabled')}${zdCard('Mode',currentMode)}${zdCard('Events',ZD.events.length)}${zdCard('Network requests',ZD.network.length)}${zdCard('Session started',new Date(ZD.started).toISOString())}</div>`;
+  document.getElementById('zd_events').innerHTML=ZD.events.length?ZD.events.map(e=>`<div class="zd-row"><span class="zd-time">${e.time}</span> <b class="zd-${e.level}">[${e.level.toUpperCase()}]</b> ${String(e.message).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}${e.data==null?'':`<div class="zd-pre">${zdSafe(e.data).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`}</div>`).join(''):'No events yet.';
+  document.getElementById('zd_network').innerHTML=ZD.network.length?ZD.network.slice().reverse().map((n,i)=>`<div class="zd-card" style="margin-bottom:8px"><b>${n.method} ${n.url}</b><div class="zd-pre">${zdSafe(n)}</div></div>`).join(''):'No network requests captured yet.';
+  document.getElementById('zd_raw').innerHTML=`<div class="zd-pre">${zdSafe({runtime:{url:location.href,online:navigator.onLine,userAgent:navigator.userAgent,viewport:[innerWidth,innerHeight],dpr:devicePixelRatio},pastefy:{endpoint,tokenConfigured:token,autoUpload:!!document.getElementById('pf_auto')?.checked},state:{mode:currentMode,workerActive:!!W},events:ZD.events,network:ZD.network}).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
+  const copy=document.getElementById('zd_copy');if(copy)copy.onclick=()=>copyText(JSON.stringify({events:ZD.events,network:ZD.network},null,2),'Diagnostics copied.').catch(()=>prompt('Diagnostics:',JSON.stringify({events:ZD.events,network:ZD.network},null,2)));
+  const clear=document.getElementById('zd_clear');if(clear)clear.onclick=()=>{ZD.events=[];ZD.network=[];zdAdd('info','Diagnostic log cleared.');};
+  const ping=document.getElementById('zd_ping');if(ping)ping.onclick=zdTestProxy;
+}
+async function zdTestProxy(){
+  const endpoint=(location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')?'https://pastefy.app/api/v2/paste':'/api/pastefy';
+  const t0=performance.now();zdAdd('info','Testing Pastefy endpoint.',{endpoint});
+  try{
+    const r=await fetch(endpoint,{method:'OPTIONS',cache:'no-store'});const text=await r.text();zdNet({kind:'proxy-test',method:'OPTIONS',url:endpoint,status:r.status,statusText:r.statusText,durationMs:Math.round(performance.now()-t0),contentType:r.headers.get('content-type'),body:text.slice(0,4000)});zdAdd(r.ok?'ok':'warn','Proxy test completed',{status:r.status,statusText:r.statusText});
+  }catch(e){zdNet({kind:'proxy-test',method:'OPTIONS',url:endpoint,error:e.message,durationMs:Math.round(performance.now()-t0)});zdAdd('error','Proxy test failed',e.stack||e.message);}
+  zdRender();
+}
+(function(){
+  zdInstall();
+  window.addEventListener('error',e=>zdAdd('error','Unhandled window error',{message:e.message,source:e.filename,line:e.lineno,column:e.colno,stack:e.error?.stack||null}));
+  window.addEventListener('unhandledrejection',e=>zdAdd('error','Unhandled promise rejection',e.reason?.stack||e.reason));
+})();
+
 function stab(id,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.pnl').forEach(p=>p.classList.remove('active'));el.classList.add('active');document.getElementById('pnl_'+id).classList.add('active');}
 function tog(id,card){const cb=document.getElementById(id);cb.checked=!cb.checked;card.classList.toggle('on',cb.checked);}
 let currentMode='vm';
@@ -54,6 +112,8 @@ async function pfUpload(content){
   if(!document.getElementById('pf_auto').checked)return null;
   const token=pfLoadToken();
   if(!token){pfOpen();throw new Error('Pastefy API token is not configured.');}
+  const zdReqStart=performance.now();
+  zdAdd('info','Pastefy upload started',{endpointHint:location.protocol==='file:'?'direct':'proxy',contentBytes:new Blob([content]).size});
   setSt('Uploading output to Pastefy...');
   const body={title:document.getElementById('pf_title').value.trim()||'ZumObf output',content,visibility:document.getElementById('pf_visibility').value,type:'LUA'};
   const folder=document.getElementById('pf_folder').value.trim();if(folder)body.folder=folder;
@@ -77,6 +137,8 @@ async function pfUpload(content){
     throw new Error('Could not reach the Pastefy proxy: '+(e&&e.message?e.message:'network error'));
   }
   const text=await r.text();let data={};try{data=JSON.parse(text);}catch(_){data={raw:text};}
+  zdNet({kind:'pastefy-upload',method:'POST',url:endpoint,status:r.status,statusText:r.statusText,durationMs:Math.round(performance.now()-zdReqStart),contentType:r.headers.get('content-type'),responseBody:text.slice(0,10000)});
+  zdAdd(r.ok?'ok':'error',r.ok?'Pastefy upload response received':'Pastefy upload returned an error',{status:r.status,statusText:r.statusText,response:data});
 
   // Pastefy can return structured error objects. Never let those become
   // JavaScript's useless "[object Object]" message.
@@ -130,6 +192,7 @@ async function runObf(){
   W=makeW();
   W.onmessage=function(e){
     const{type,msg,result,n,iLen,oLen,mode}=e.data;
+    zdAdd(type==='error'?'error':'debug','Worker message',{type,msg,n,iLen,oLen,mode});
     if(type==='log'){const lg=document.getElementById('lg');lg.innerHTML+=msg+'\n';lg.scrollTop=lg.scrollHeight;done++;document.getElementById('bar').style.width=Math.min(95,done*6)+'%';setSt(msg.replace('OK ',''));}
     else if(type==='error'){setSt('Compile error: '+msg+' — try fallback mode.');setBusy(false);W=null;document.getElementById('bar').style.width='0%';}
     else if(type==='done'){
@@ -146,7 +209,7 @@ async function runObf(){
       setBusy(false);W=null;
     }
   };
-  W.onerror=function(e){setSt('Worker error: '+e.message);setBusy(false);W=null;};
+  W.onerror=function(e){zdAdd('error','Worker runtime error',{message:e.message,filename:e.filename,lineno:e.lineno,colno:e.colno});setSt('Worker error: '+e.message);setBusy(false);W=null;};
   W.postMessage({src,opts:getOpts(),intensity,targetBytes,mode:currentMode});
 }
 function cpOut(){const v=document.getElementById('out').value;if(!v){setSt('Nothing to copy.');return;}navigator.clipboard.writeText(v).then(()=>setSt('Copied.')).catch(()=>{document.getElementById('out').select();document.execCommand('copy');setSt('Copied.');});}
@@ -280,6 +343,8 @@ function bindUI(){
   document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>setMode(el.dataset.mode)));
   document.querySelectorAll('[data-toggle]').forEach(el=>el.addEventListener('click',()=>tog(el.dataset.toggle,el)));
   document.getElementById('btnrun').addEventListener('click',runObf);
+  const inp=document.getElementById('inp');
+  inp.addEventListener('input',()=>{if(inp.value.trim().toLowerCase()==='zumhub diag'){inp.value='';zdOpen();}});
   document.getElementById('btncopy').addEventListener('click',cpOut);
   document.getElementById('btnsave').addEventListener('click',saveLua);
   document.getElementById('btnclear').addEventListener('click',clr);
