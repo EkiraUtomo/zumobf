@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
       title: String(paste.title || 'ZumObf output'),
       content: paste.content,
       visibility: String(paste.visibility || 'UNLISTED'),
-      type: String(paste.type || 'LUA')
+      type: String(paste.type || 'PASTE')
     };
 
     if (paste.folder) payload.folder = String(paste.folder);
