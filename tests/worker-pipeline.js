@@ -2,8 +2,8 @@
 const fs=require('fs');
 const vm=require('vm');
 const path=require('path');
-const compiler=fs.readFileSync(path.join(__dirname,'../public/js/compiler.js'),'utf8');
-const worker=fs.readFileSync(path.join(__dirname,'../public/js/worker.js'),'utf8');
+const compiler=fs.readFileSync(path.join(__dirname,'../js/compiler.js'),'utf8');
+const worker=fs.readFileSync(path.join(__dirname,'../js/worker.js'),'utf8');
 
 function run(mode,src,opts={}){
   const messages=[];

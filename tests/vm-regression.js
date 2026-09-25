@@ -2,7 +2,7 @@
 const fs=require('fs');
 const vm=require('vm');
 const path=require('path');
-const source=fs.readFileSync(path.join(__dirname,'../public/js/compiler.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../js/compiler.js'),'utf8');
 const context={console};
 vm.createContext(context);
 vm.runInContext(source+'\nthis.api={compile};',context);

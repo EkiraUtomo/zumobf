@@ -4,11 +4,11 @@ A browser-based Lua/Luau obfuscation project with a custom compiler and stack vi
 
 ## Layout
 
-- `public/index.html` — dashboard markup only
-- `public/css/style.css` — dashboard styling
-- `public/js/app.js` — UI, worker control, tests, download handling
-- `public/js/worker.js` — background compilation pipeline
-- `public/js/compiler.js` — lexer, parser, bytecode compiler, serializer, VM emitter
+- `index.html` — dashboard markup only
+- `css/style.css` — dashboard styling
+- `js/app.js` — UI, worker control, tests, download handling
+- `js/worker.js` — background compilation pipeline
+- `js/compiler.js` — lexer, parser, bytecode compiler, serializer, VM emitter
 - `tests/compile-smoke.js` — local compiler/VM smoke tests
 
 ## VM pipeline

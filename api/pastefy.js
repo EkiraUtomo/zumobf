@@ -6,6 +6,13 @@ module.exports = async function handler(req, res) {
     return res.status(204).end();
   }
 
+  if (req.method === 'GET') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-ZumObf-Pastefy', 'v2');
+    return res.status(200).json({ ok: true, service: 'ZumObf Pastefy proxy' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
