@@ -440,83 +440,12 @@ local ${pN}=${DE}(${bcN},1);${EX}(${pN},{loc={},outer=nil,env=_G,args={}},{} )`;
 // ══════════════════════════════════════════════════════════════════════════════
 // V4 WRAPPING LAYERS (applied after VM emit)
 // ══════════════════════════════════════════════════════════════════════════════
-// Identifier mangling must operate on Lua tokens, never raw text.
-// In particular, `local function foo()` contains the keyword `function`;
-// a plain /local\s+(\w+)/ pass can accidentally rename that keyword and
-// produce invalid Lua such as `local <junk> foo()`.
-const LUA_KEYWORDS=new Set([
-  'and','break','continue','do','else','elseif','end','export','false','for',
-  'function','if','in','local','nil','not','or','repeat','return','then',
-  'true','type','typeof','until','while'
-]);
-
-function mangleLuaIdentifiers(code,map){
-  let out='',i=0,prevSig='';
-  while(i<code.length){
-    const ch=code[i];
-
-    // Line/block comments.
-    if(ch==='-'&&code[i+1]==='-'){
-      if(code[i+2]==='['&&code[i+3]==='['){
-        const end=code.indexOf(']]',i+4);
-        const j=end<0?code.length:end+2;
-        out+=code.slice(i,j);i=j;continue;
-      }
-      const end=code.indexOf('\n',i+2);
-      const j=end<0?code.length:end;
-      out+=code.slice(i,j);i=j;continue;
-    }
-
-    // Quoted strings / long strings.
-    if(ch==='"'||ch==="'"){
-      const q=ch;let j=i+1;
-      while(j<code.length){
-        if(code[j]==='\\')j+=2;
-        else if(code[j]===q){j++;break;}
-        else j++;
-      }
-      out+=code.slice(i,j);i=j;continue;
-    }
-    if(ch==='['&&code[i+1]==='['){
-      const end=code.indexOf(']]',i+2);
-      const j=end<0?code.length:end+2;
-      out+=code.slice(i,j);i=j;continue;
-    }
-
-    if(/[A-Za-z_]/.test(ch)){
-      let j=i+1;
-      while(j<code.length&&/[A-Za-z0-9_]/.test(code[j]))j++;
-      const word=code.slice(i,j);
-      const prev=code[i-1]||'';
-      // Don't rename keywords or table/member names (`obj.foo`, `obj:foo`).
-      const isMember=prev==='.'||prev===':';
-      const replacement=(!LUA_KEYWORDS.has(word)&&!isMember&&map[word])?map[word]:word;
-      out+=replacement;
-      prevSig=word;
-      i=j;continue;
-    }
-
-    out+=ch;
-    if(!/\s/.test(ch))prevSig=ch;
-    i++;
-  }
-  return out;
-}
-
 function L_var(code){
   const map={};
-  // Discover declarations without ever treating `function` as an identifier.
-  const declRe=/\blocal\s+function\s+([A-Za-z_]\w*)|\blocal\s+(?!function\b)([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g;
-  let m;
-  while((m=declRe.exec(code))){
-    const names=(m[1]||m[2]).split(',').map(x=>x.trim());
-    for(const name of names){
-      if(!LUA_KEYWORDS.has(name)&&!map[name])map[name]=id();
-    }
-  }
-  // Also mangle local function names declared after `local function`; references
-  // are rewritten token-safely, so strings/comments/member keys remain untouched.
-  return mangleLuaIdentifiers(code,map);
+  code=code.replace(/\blocal\s+function\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(!map[n])map[n]=id();return'local function '+map[n];});
+  code=code.replace(/\blocal\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(!map[n])map[n]=id();return'local '+map[n];});
+  for(const[k,v]of Object.entries(map))code=code.replace(new RegExp('\\b'+k+'\\b','g'),v);
+  return code;
 }
 function L_junk(code,intensity){
   const lines=code.split('\n'),out=[];

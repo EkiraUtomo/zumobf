@@ -48,9 +48,9 @@ async function pfUpload(content){
   const token=pfLoadToken();
   if(!token){pfOpen();throw new Error('Pastefy API token is not configured.');}
   setSt('Uploading output to Pastefy...');
-  const body={title:document.getElementById('pf_title').value.trim()||'ZumObf output',content,visibility:document.getElementById('pf_visibility').value,type:'LUA'};
-  const folder=document.getElementById('pf_folder').value.trim();if(folder)body.folder=folder;
-  const r=await fetch('https://pastefy.app/api/v2/paste',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const paste={title:document.getElementById('pf_title').value.trim()||'ZumObf output',content,visibility:document.getElementById('pf_visibility').value};
+  const folder=document.getElementById('pf_folder').value.trim();
+  const r=await fetch('/api/pastefy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,paste,folder})});
   let data={};try{data=await r.json();}catch(_){ }
   if(!r.ok)throw new Error(data.message||data.error||`Pastefy returned HTTP ${r.status}`);
   const paste=data.paste||data;
