@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lua Obfuscator v5</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="w">
+<h1>Lua <span>Obfuscator</span></h1>
+<p class="sub">Custom bytecode compiler · VM pipeline · Modular build</p>
+
+<div class="notice">VM mode compiles the input into custom bytecode and runs it through the bundled VM.</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="obf">Obfuscator</div>
+  <div class="tab" data-tab="test">Tests</div>
+  <div class="tab" data-tab="about">About</div>
+</div>
+
+<!-- OBFUSCATOR -->
+<div class="pnl active" id="pnl_obf">
+
+<label class="lbl">Input Lua / Roblox script</label>
+<textarea id="inp" rows="8" placeholder="-- paste your Roblox / Lua script here
+-- Supports: locals, functions, if/else, while, for, tables, string ops, math, print, etc."></textarea>
+
+<div class="sec">Mode</div>
+<div class="modebar">
+  <label class="mode active" id="card_vm" data-mode="vm"><input type="radio" name="mode" id="mode_vm" checked><span>VM</span><small>custom bytecode</small></label>
+  <label class="mode" id="card_fallback" data-mode="fallback"><input type="radio" name="mode" id="mode_fallback"><span>Fallback</span><small>source transforms</small></label>
+</div>
+
+<div class="sec">Output</div>
+<div class="formatbar">
+  <label class="fmt active"><input type="radio" name="format" value="normal" checked><span>Normal</span><small>readable</small></label>
+  <label class="fmt"><input type="radio" name="format" value="compact"><span>Compact</span><small>less whitespace</small></label>
+  <label class="fmt"><input type="radio" name="format" value="one"><span>One line</span><small>paste ready</small></label>
+</div>
+
+<div class="advanced-head">
+  <button type="button" class="advanced-toggle" id="advancedToggle">Advanced <span id="advancedArrow">+</span></button>
+</div>
+<div class="advanced" id="advancedPanel" hidden>
+  <div class="sec">Transforms</div>
+  <div class="g2">
+    <label class="opt on" data-toggle="o_var"><input type="checkbox" id="o_var" checked><span class="dot"></span>Variable mangling</label>
+    <label class="opt on" data-toggle="o_junk"><input type="checkbox" id="o_junk" checked><span class="dot"></span>Junk code</label>
+    <label class="opt on" data-toggle="o_dead"><input type="checkbox" id="o_dead" checked><span class="dot"></span>Dead branches</label>
+    <label class="opt on" data-toggle="o_poly"><input type="checkbox" id="o_poly" checked><span class="dot"></span>Polymorphic XOR</label>
+    <label class="opt on" data-toggle="o_scope"><input type="checkbox" id="o_scope" checked><span class="dot"></span>Scope layers</label>
+    <label class="opt on" data-toggle="o_flow"><input type="checkbox" id="o_flow" checked><span class="dot"></span>Control flow</label>
+    <label class="opt on" data-toggle="o_wrap"><input type="checkbox" id="o_wrap"><span class="dot"></span>Load wrapper</label>
+    <label class="opt on" data-toggle="o_bytes"><input type="checkbox" id="o_bytes"><span class="dot"></span>Byte loader</label>
+  </div>
+
+  <div class="sec">Watermark</div>
+  <div class="watermark-row">
+    <label class="opt on" data-toggle="o_watermark"><input type="checkbox" id="o_watermark" checked><span class="dot"></span>Embedded watermark</label>
+    <input class="wm-input" id="wm_text" type="text" value="ZumObf / UwURaww" maxlength="80" aria-label="Watermark text">
+  </div>
+
+  <label class="lbl">Junk intensity</label>
+  <div class="slrow"><input type="range" id="junk_lvl" min="1" max="5" value="2"><span class="slv" id="jlbl">2/5</span></div>
+
+  <label class="lbl">Target output size <span class="optional">(optional)</span></label>
+  <div class="srow"><input type="text" id="sval" placeholder="e.g. 2, 500, 1.5"><select id="sunit"><option value="0">No target</option><option value="1024">KB</option><option value="1048576">MB</option><option value="1073741824">GB</option></select></div>
+  <div class="hint" id="snote">Pads with inert code to reach the requested size.</div>
+</div>
+
+<div class="pastefy-box" id="pastefyBox">
+  <div class="pastefy-head">
+    <div><strong>Pastefy</strong><span>Optional output upload</span></div>
+    <label class="switch"><input type="checkbox" id="pf_auto"><span></span></label>
+  </div>
+  <div class="pastefy-body">
+    <label class="lbl">Paste name</label>
+    <input class="text-input" id="pf_title" type="text" value="ZumObf output" maxlength="120">
+    <div class="pastefy-grid">
+      <div><label class="lbl">Visibility</label><select class="text-input" id="pf_visibility"><option value="UNLISTED">Unlisted</option><option value="PUBLIC">Public</option></select></div>
+      <div><label class="lbl">Folder ID <span class="optional">(optional)</span></label><input class="text-input" id="pf_folder" type="text" placeholder="Folder ID"></div>
+    </div>
+    <button type="button" class="settings-link" id="pf_settings">Pastefy API settings</button>
+    <div class="pastefy-result" id="pf_result" hidden></div>
+  </div>
+</div>
+
+<div class="row">
+  <button class="p" id="btnrun">Obfuscate</button>
+  <button id="btncopy">Copy</button>
+  <button id="btnsave">Save .lua</button>
+  <button id="btnclear">Clear</button>
+</div>
+
+<div id="st">Ready — VM mode compiles your script to custom bytecode. No load() on source.</div>
+<div class="pw"><div class="pb" id="bar"></div></div>
+<div class="lg" id="lg"></div>
+
+<div class="dlc" id="dlc">
+  <a id="dla" href="#" target="_blank">obfuscated.lua</a>
+  <div class="dlh">Desktop: right-click → Save link as · iOS: long-press → Download · Android: long-press → Save link</div>
+</div>
+
+<div class="stats" id="stats" style="display:none">
+  <div class="stat"><div class="sv" id="si">—</div><div class="sl">Input</div></div>
+  <div class="stat"><div class="sv" id="so">—</div><div class="sl">Output</div></div>
+  <div class="stat"><div class="sv" id="sx">—</div><div class="sl">Bloat</div></div>
+  <div class="stat"><div class="sv" id="sn">—</div><div class="sl">Layers</div></div>
+</div>
+
+<label class="lbl">Output</label>
+<textarea id="out" readonly rows="6" style="color:#a78bfa" placeholder="obfuscated output appears here..."></textarea>
+</div>
+
+<!-- TESTS -->
+<div class="pnl" id="pnl_test">
+<label class="lbl">Test script</label>
+<textarea id="tsrc" rows="6">local playerName = "Roblox"
+local health = 100
+local maxHealth = 250
+local function add(a, b) return a + b end
+local result = add(health, maxHealth)
+local greeting = "Hello, " .. playerName
+if result > 200 then
+  print(greeting .. " - healthy!")
+else
+  print(greeting .. " - low health")
+end
+for i = 1, 3 do
+  print("Loop: " .. i)
+end</textarea>
+<div class="row"><button class="p" id="btntests">Run all tests</button></div>
+<div id="tst">Ready.</div>
+<div class="pw"><div class="pb" id="tbar"></div></div>
+<div class="sm" id="tsum" style="display:none">
+  <div class="sc"><div class="scv pass" id="tpass">0</div><div class="scl">Passed</div></div>
+  <div class="sc"><div class="scv fail" id="tfail">0</div><div class="scl">Failed</div></div>
+</div>
+<div class="rbox" id="tres" style="display:none">
+  <div class="rhd">Results</div>
+  <div id="tlist"></div>
+</div>
+</div>
+
+<!-- ABOUT -->
+<div class="pnl" id="pnl_about">
+<label class="lbl">How VM mode is built</label>
+<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:13px;font-size:12px;line-height:1.8;color:var(--mu)">
+  <b style="color:var(--tx)">Old loader model:</b> every obfuscation approach that uses <code>load()</code> can be defeated by hooking <code>load</code> globally and printing its argument. One line of Lua reveals the decoded source regardless of how many XOR/byte-array layers wrapped it.<br><br>
+  <b style="color:var(--tx)">VM mode:</b> the JavaScript compiler turns the script into a custom instruction stream. The final Lua output contains an interpreter, a deserializer, captured closure state, and the encoded instruction stream. The original source is never passed into the VM runtime. There is no <code>load()</code> call on source anywhere. A hook on <code>load</code> sees the VM booting — not your script.<br><br>
+  <b style="color:var(--tx)">To analyze VM mode</b>, a reverser has to understand the custom instruction set, decode the bytecode container, follow the VM dispatch loop, and reconstruct the original control flow and data operations. That's a multi-hour job even for skilled reversers.
+</div>
+
+<label class="lbl" style="margin-top:14px">Architecture</label>
+<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:13px;font-family:var(--mo);font-size:11px;line-height:1.9;color:var(--mu)">
+  Source Lua<br>
+  <span style="color:var(--ac)">↓ JS Lexer + Recursive-descent Parser</span><br>
+  AST<br>
+  <span style="color:var(--ac)">↓ Bytecode compiler (42 opcodes)</span><br>
+  Bytecode array [numbers]<br>
+  <span style="color:var(--ac)">↓ Rolling-XOR encryption (seed derived, never static)</span><br>
+  Encrypted bytecode<br>
+  <span style="color:var(--ac)">↓ Emit: Lua VM + encrypted bytecode table</span><br>
+  VM Lua source<br>
+  <span style="color:var(--ac)">↓ Optional post-VM transforms; VM mode keeps loadstring/byte-array loaders disabled</span><br>
+  <span style="color:var(--ok)">Final single-line output — no load() on source</span>
+</div>
+
+<label class="lbl" style="margin-top:14px">Deploy</label>
+<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:12px;font-family:var(--mo);font-size:11px;line-height:1.9;color:var(--mu)">
+  <span style="color:var(--ok)"># Vercel (one command)</span><br>npx vercel --prod<br><br>
+  <span style="color:var(--ok)"># GitHub Pages</span><br>
+  git init &amp;&amp; git add . &amp;&amp; git commit -m "init"<br>
+  git remote add origin https://github.com/YOU/lua-obf.git &amp;&amp; git push -u origin main<br>
+  <span style="color:var(--mu)"># Settings → Pages → branch: main → / (root)</span><br><br>
+  <span style="color:var(--ok)"># Codeberg Pages</span><br>
+  git remote add origin https://codeberg.org/YOU/lua-obf.git &amp;&amp; git push -u origin main<br>
+  <span style="color:var(--mu)"># Settings → Pages → branch: main → / (root)</span>
+</div>
+</div>
+</div>
+
+<div class="modal" id="pf_modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head"><strong>Pastefy API</strong><button type="button" id="pf_close">×</button></div>
+    <label class="lbl">API token</label>
+    <input class="text-input" id="pf_token" type="password" autocomplete="off" placeholder="Paste your Pastefy API token">
+    <div class="hint">The token is used by your browser to call Pastefy. It is not included in generated Lua.</div>
+    <label class="remember"><input type="checkbox" id="pf_remember"> Remember on this device</label>
+    <div class="modal-actions"><button type="button" id="pf_clear">Clear token</button><button type="button" class="p" id="pf_save">Save</button></div>
+  </div>
+</div>
+<footer>Lua Obfuscator v5 VM Edition · Custom bytecode compiler · 42-opcode VM · Modular build</footer>
+
+
+<script src="/js/app.js" defer></script>
+</body>
+</html>
