@@ -29,11 +29,14 @@ module.exports = async function handler(req, res) {
     }
 
     const payload = {
-  title: String(paste.title || 'ZumObf output'),
-  content: paste.content,
-  visibility: String(paste.visibility || 'UNLISTED'),
-  type: 'PASTE'
-};
+      title: String(paste.title || 'ZumObf output'),
+      content: paste.content,
+      visibility: String(paste.visibility || 'UNLISTED'),
+      type: String(paste.type || 'LUA')
+    };
+
+    if (paste.folder) payload.folder = String(paste.folder);
+
     const upstream = await fetch('https://pastefy.app/api/v2/paste', {
       method: 'POST',
       headers: {

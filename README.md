@@ -53,3 +53,16 @@ The project now tests the browser worker pipeline in addition to compiler and se
 The local automated suite currently passes 25 checks across compiler smoke tests, VM stack regressions, serialization, additional semantics, worker execution, and Pastefy proxy request handling.
 
 The repository is intentionally still a custom Luau subset rather than a claim of complete language compatibility. Production validation against the exact Roblox Luau runtime should remain part of release testing.
+
+
+## v6.1 runtime-safety fixes
+
+- VM mode no longer applies source-level variable mangling to its generated interpreter.
+  The VM emitter already randomizes its runtime identifiers; global regex renaming could
+  corrupt nested runtime scopes and produce `attempt to call a nil value`.
+- VM mode skips the polymorphic string rewrite because rewriting Lua source literals can
+  alter escape semantics.
+- Fallback `L_var` now masks strings/comments and does not rename member names after `.` or `:`.
+- `L_poly` only rewrites safe plain double-quoted literals.
+- `pad()` now appends complete Lua statements instead of slicing a padding function at the
+  target length, preventing target-size padding from creating invalid Lua.
