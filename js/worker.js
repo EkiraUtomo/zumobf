@@ -19,28 +19,19 @@ self.onmessage=function(e){
       lg('Base transforms — '+code.length.toLocaleString()+' chars');
     }
 
-    if(mode==='vm'){
-      // VM output already has randomized internal identifiers and encoded
-      // bytecode. Source-level identifier/string rewrites can corrupt the VM
-      // runtime, especially across nested closures, so those passes are
-      // intentionally disabled for VM mode.
-      if(opts.o_var)  lg('Variable mangling skipped in VM mode — VM identifiers are randomized during emission.');
-      if(opts.o_poly) lg('Polymorphic XOR skipped in VM mode — preserving VM string semantics.');
-      if(opts.o_junk) step('Stealthy junk',c=>L_junk(c,intensity));
-      if(opts.o_dead) step('Dead branches',L_dead);
-      if(opts.o_scope)step('Scope bomb',L_scope);
-      if(opts.o_flow) step('Control flow mangle',L_flow);
-      if(opts.o_wrap) lg('Loadstring wrap skipped in VM mode — the VM executes bytecode directly.');
-      if(opts.o_bytes)lg('Byte-array loader skipped in VM mode — keeping the output load-free.');
-    }else{
-      if(opts.o_var)  step('Variable mangling',L_var);
-      if(opts.o_junk) step('Stealthy junk',c=>L_junk(c,intensity));
-      if(opts.o_dead) step('Dead branches',L_dead);
-      if(opts.o_poly) step('Polymorphic XOR',L_poly);
-      if(opts.o_scope)step('Scope bomb',L_scope);
-      if(opts.o_flow) step('Control flow mangle',L_flow);
-      if(opts.o_wrap) step('Loadstring wrap',L_wrap);
-      if(opts.o_bytes)step('Byte array encode',L_bytes);
+    if(opts.o_var)  step('Variable mangling',L_var);
+    if(opts.o_junk) step('Stealthy junk',c=>L_junk(c,intensity));
+    if(opts.o_dead) step('Dead branches',L_dead);
+    if(opts.o_poly) step('Polymorphic XOR',L_poly);
+    if(opts.o_scope)step('Scope bomb',L_scope);
+    if(opts.o_flow) step('Control flow mangle',L_flow);
+    if(opts.o_wrap){
+      if(mode==='vm') lg('Loadstring wrap skipped in VM mode — the VM executes bytecode directly.');
+      else step('Loadstring wrap',L_wrap);
+    }
+    if(opts.o_bytes){
+      if(mode==='vm') lg('Byte-array loader skipped in VM mode — keeping the output load-free.');
+      else step('Byte array encode',L_bytes);
     }
 
     let out=code;

@@ -573,86 +573,11 @@ local ${pN},${posN}=${DE}(${bcN},1);${EX}(${pN},{loc={},outer=nil,env=_G,args={}
 // V4 WRAPPING LAYERS (applied after VM emit)
 // ══════════════════════════════════════════════════════════════════════════════
 function L_var(code){
-  // Safe identifier mangling.
-  // VM output already uses randomized identifiers, so worker.js skips this
-  // pass in VM mode. This implementation is retained for fallback mode and
-  // protects strings/comments/property names from accidental replacement.
-  const reserved=new Set([
-    'and','break','continue','do','else','elseif','end','false','for',
-    'function','if','in','local','nil','not','or','repeat','return',
-    'then','true','type','until','while'
-  ]);
-  const saved=[];
-  let masked='',i=0;
-
-  function save(raw){const key='\u0001'+saved.length+'\u0002';saved.push(raw);masked+=key;}
-
-  while(i<code.length){
-    const c=code[i],n=code[i+1];
-
-    if(c==='"'||c==="'"){
-      const q=c;let j=i+1,esc=false;
-      while(j<code.length){
-        const x=code[j];
-        if(esc){esc=false;j++;continue;}
-        if(x==='\\'){esc=true;j++;continue;}
-        if(x===q){j++;break;}
-        j++;
-      }
-      save(code.slice(i,j));i=j;continue;
-    }
-
-    if(c==='-'&&n==='-'){
-      if(code[i+2]==='['&&code[i+3]==='['){
-        let j=i+4;
-        while(j<code.length&&!(code[j]===']'&&code[j+1]===']'))j++;
-        j=Math.min(code.length,j+2);save(code.slice(i,j));i=j;
-      }else{
-        let j=i+2;while(j<code.length&&code[j]!=='\n'&&code[j]!=='\r')j++;
-        save(code.slice(i,j));i=j;
-      }
-      continue;
-    }
-
-    masked+=c;i++;
-  }
-
-  // Collect names declared by local declarations. We deliberately do not
-  // attempt a fake global scope analysis: generated fallback code is safest
-  // when only clearly declared locals are renamed.
-  const names=new Set();
-  const decl=/\blocal\s+(?:function\s+)?([A-Za-z_]\w*)/g;
-  let m;
-  while((m=decl.exec(masked))){
-    if(!reserved.has(m[1]))names.add(m[1]);
-  }
-
-  // Handle `local a,b,c = ...` declarations.
-  const multi=/\blocal\s+([^;\n]*)/g;
-  while((m=multi.exec(masked))){
-    const lhs=m[1].split('=')[0];
-    for(const item of lhs.split(',')){
-      const q=item.match(/^\s*([A-Za-z_]\w*)/);
-      if(q&&!reserved.has(q[1]))names.add(q[1]);
-    }
-  }
-
-  const map=Object.create(null);
-  for(const name of names)map[name]=id();
-
-  let out='',last=0;
-  const ident=/[A-Za-z_]\w*/g;
-  while((m=ident.exec(masked))){
-    const name=m[0],pos=m.index;
-    out+=masked.slice(last,pos);
-    const prev=masked[pos-1];
-    // `obj.field` and `obj:method` member names are not variables.
-    out+=(map[name]&&prev!=='.'&&prev!==':')?map[name]:name;
-    last=pos+name.length;
-  }
-  out+=masked.slice(last);
-
-  return out.replace(/\u0001(\d+)\u0002/g,(_,n)=>saved[Number(n)]);
+  const map={};
+  code=code.replace(/\blocal\s+function\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(!map[n])map[n]=id();return'local function '+map[n];});
+  code=code.replace(/\blocal\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(!map[n])map[n]=id();return'local '+map[n];});
+  for(const[k,v]of Object.entries(map))code=code.replace(new RegExp('\\b'+k+'\\b','g'),v);
+  return code;
 }
 function L_junk(code,intensity){
   const lines=code.split('\n'),out=[];
@@ -679,53 +604,17 @@ function L_dead(code){
   return out.join('\n');
 }
 function L_poly(code){
-  // Safe polymorphic string transform.
-  // Only plain string literals are encoded. Escaped literals are preserved
-  // because rewriting their source text can change Luau escape semantics.
-  const KEY=rndI(5,250);
-  const fn=id(10),kv=id(),arr=id(4),iN=id(4),ch=id(4);
-  const prefix=`local ${kv}=${KEY};local function ${fn}(s)local ${arr}={};for ${iN}=1,#s do ${arr}[${iN}]=string.char(bit32.bxor(string.byte(s,${iN}),${kv})) end;return table.concat(${arr}) end\n`;
-
-  let out='',i=0;
-  while(i<code.length){
-    if(code[i]==='"'){
-      let j=i+1,esc=false;
-      while(j<code.length){
-        const c=code[j];
-        if(esc){esc=false;j++;continue;}
-        if(c==='\\'){esc=true;j++;continue;}
-        if(c==='"'){j++;break;}
-        j++;
-      }
-      const raw=code.slice(i,j);
-      if(raw.length>=2&&!raw.includes('\\')){
-        const body=raw.slice(1,-1);
-        if(body.length&&body.length<=300){
-          let enc='';
-          for(let k=0;k<body.length;k++)enc+=String.fromCharCode(body.charCodeAt(k)^KEY);
-          // Lua source needs the encoded bytes represented as decimal escapes.
-          const escaped=[...enc].map(x=>'\\'+x.charCodeAt(0)).join('');
-          out+=`${fn}("${escaped}")`;
-        }else out+=raw;
-      }else out+=raw;
-      i=j;continue;
-    }
-    if(code[i]==="'" ){
-      // Leave single-quoted literals untouched; the compiler-generated VM
-      // primarily uses double-quoted strings and this avoids parser surprises.
-      let j=i+1,esc=false;
-      while(j<code.length){
-        const c=code[j];
-        if(esc){esc=false;j++;continue;}
-        if(c==='\\'){esc=true;j++;continue;}
-        if(c==="'"){j++;break;}
-        j++;
-      }
-      out+=code.slice(i,j);i=j;continue;
-    }
-    out+=code[i++];
-  }
-  return prefix+out;
+  const KEY=rndI(5,250),s1=rndI(2,20),off=rndI(1,20);
+  const s2=Math.ceil((KEY-off)/s1)+rndI(0,2),KEY2=((s1*s2)%251)+off;
+  const kv=id(),sv1=id(4),sv2=id(4),ov=id(4),dFn=id(10);
+  const keyX=`local ${sv1}=${s1};local ${sv2}=${s2};local ${ov}=${off};local ${kv}=(${sv1}*${sv2})%251+${ov};`;
+  const dec=`${keyX}local function ${dFn}(s) local r={} for i=1,#s do r[i]=string.char(bit32.bxor(string.byte(s,i),${kv})) end return table.concat(r) end\n`;
+  const t=code.replace(/"((?:[^"\\]|\\.)*)"/g,(m,s)=>{
+    if(!s||s.length>300)return m;
+    let enc='';for(let i=0;i<s.length;i++)enc+='\\'+( s.charCodeAt(i)^KEY2);
+    return`${dFn}("${enc}")`;
+  });
+  return dec+t;
 }
 function L_scope(code){
   let r=code;for(let i=0;i<3;i++){const a=id(),b=id();r=`do\nlocal ${a}=${rndI(1,999)};local ${b}=nil;\n${r}\n${a}=nil;\nend`;}
@@ -755,16 +644,9 @@ function L_fallbackFull(code){
 function pad(code,target){
   if(!target||target<=0||code.length>=target)return code;
   const names=['getService','waitForChild','findPlayer','checkBounds','updateState','clampValue','fetchData'];
-  let padding='';
-  while(code.length+padding.length<target){
-    const f=names[rndI(0,names.length-1)]+id(3);
-    const a=id(4),b=id(4);
-    const stmt=`local function ${f}(${a},${b}) if type(${a})~="nil" then return ${b} end return nil end\n`;
-    padding+=stmt;
-  }
-  // Never slice a Lua statement in half. A valid output is more important
-  // than hitting targetBytes exactly.
-  return padding+code;
+  let p='';
+  while(p.length<target-code.length){const f=names[rndI(0,names.length-1)]+id(3),a=id(4),b=id(4);p+=`local function ${f}(${a},${b}) if type(${a})~="nil" then return ${b} end return nil end\n`;}
+  return p.slice(0,target-code.length)+code;
 }
 function compact(c){return c.replace(/\r?\n/g,' ').replace(/\t/g,' ').replace(/ {2,}/g,' ').trim();}
 

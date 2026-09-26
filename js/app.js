@@ -65,16 +65,18 @@ function setMode(m){
   document.getElementById('card_vm').classList.toggle('active',m==='vm');
   document.getElementById('card_fallback').classList.toggle('active',m==='fallback');
 }
+document.getElementById('junk_lvl').oninput=function(){document.getElementById('jlbl').textContent=this.value+'/5';};
 function fmtB(b){if(b>=1073741824)return(b/1073741824).toFixed(2)+' GB';if(b>=1048576)return(b/1048576).toFixed(2)+' MB';if(b>=1024)return(b/1024).toFixed(2)+' KB';return b+' B';}
+document.getElementById('sval').oninput=document.getElementById('sunit').onchange=()=>{
+  const v=parseFloat(document.getElementById('sval').value),u=parseInt(document.getElementById('sunit').value);
+  document.getElementById('snote').textContent=(!u||isNaN(v)||v<=0)?'Pads with stealthy fake functions to hit the byte target.':'Target: '+fmtB(Math.round(v*u));
+};
 
 function dataURI(t){return'data:text/plain;charset=utf-8;base64,'+btoa(unescape(encodeURIComponent(t)));}
 function copyText(v,msg){return navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v).then(()=>setSt(msg)):Promise.reject(new Error('Clipboard unavailable'));}
 function showDL(txt){const fname='obfuscated_'+Date.now()+'.lua';const a=document.getElementById('dla');a.href=dataURI(txt);a.download=fname;a.textContent=fname;document.getElementById('dlc').style.display='block';}
 function saveLua(){const v=document.getElementById('out').value;if(!v){setSt('Obfuscate first.');return;}try{const b=new Blob([v],{type:'text/plain'}),url=URL.createObjectURL(b),a=document.createElement('a');a.href=url;a.download='obfuscated_'+Date.now()+'.lua';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);setSt('Downloaded.');}catch(e){showDL(v);setSt('Tap the link below to save.');}}
-function makeW(){
-  const url=new URL('/js/worker.js',window.location.href);
-  return new Worker(url.toString());
-}
+function makeW(){return new Worker('/js/worker.js');}
 
 let W=null;
 function getOpts(){const o={};document.querySelectorAll('[data-toggle]').forEach(el=>o[el.dataset.toggle]=document.getElementById(el.dataset.toggle).checked);o.watermark=getWatermark();o.format=getFormat();return o;}
@@ -113,7 +115,7 @@ async function pfUpload(content){
   const zdReqStart=performance.now();
   zdAdd('info','Pastefy upload started',{endpointHint:location.protocol==='file:'?'direct':'proxy',contentBytes:new Blob([content]).size});
   setSt('Uploading output to Pastefy...');
-  const body={title:document.getElementById('pf_title').value.trim()||'ZumObf output',content,visibility:document.getElementById('pf_visibility').value,type:'LUA'};
+  const body={title:document.getElementById('pf_title').value.trim()||'ZumObf output',content,visibility:document.getElementById('pf_visibility').value,type:'PASTE'};
   const folder=document.getElementById('pf_folder').value.trim();if(folder)body.folder=folder;
   const local=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
   const endpoint=local?'https://pastefy.app/api/v2/paste':'/api/pastefy';
@@ -337,47 +339,21 @@ function bindAdvanced(){
 }
 
 function bindUI(){
-  // All DOM bindings live here so the app can never die during script evaluation
-  // because one element is not available yet.
-  const byId=id=>document.getElementById(id);
-  const junk=byId('junk_lvl');
-  if(junk) junk.addEventListener('input',function(){const label=byId('jlbl');if(label)label.textContent=this.value+'/5';});
-  const sval=byId('sval'),sunit=byId('sunit');
-  const updateTarget=()=>{
-    if(!sval||!sunit)return;
-    const v=parseFloat(sval.value),u=parseInt(sunit.value);
-    const note=byId('snote');
-    if(note)note.textContent=(!u||isNaN(v)||v<=0)?'Pads with stealthy fake functions to hit the byte target.':'Target: '+fmtB(Math.round(v*u));
-  };
-  if(sval)sval.addEventListener('input',updateTarget);
-  if(sunit)sunit.addEventListener('change',updateTarget);
-
   document.querySelectorAll('.tab').forEach(el=>el.addEventListener('click',()=>stab(el.dataset.tab,el)));
   document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>setMode(el.dataset.mode)));
   document.querySelectorAll('[data-toggle]').forEach(el=>el.addEventListener('click',()=>tog(el.dataset.toggle,el)));
-  const runBtn=byId('btnrun'); if(runBtn)runBtn.addEventListener('click',runObf);
-  const inp=byId('inp');
-  if(inp)inp.addEventListener('input',()=>{if(inp.value.trim().toLowerCase()==='zumhub diag'){inp.value='';zdOpen();}});
-  if(byId('btncopy'))byId('btncopy').addEventListener('click',cpOut);
-  if(byId('btnsave'))byId('btnsave').addEventListener('click',saveLua);
-  if(byId('btnclear'))byId('btnclear').addEventListener('click',clr);
-  if(byId('btntests'))byId('btntests').addEventListener('click',runTests);
-  if(byId('pf_settings'))byId('pf_settings').addEventListener('click',pfOpen);
-  if(byId('pf_close'))byId('pf_close').addEventListener('click',pfClose);
-  if(byId('pf_save'))byId('pf_save').addEventListener('click',()=>{const t=document.getElementById('pf_token').value.trim();pfSaveToken(t,document.getElementById('pf_remember').checked);pfClose();setSt(t?'Pastefy token saved.':'Pastefy token cleared.');});
-  if(byId('pf_clear'))byId('pf_clear').addEventListener('click',()=>{pfSaveToken('',false);document.getElementById('pf_token').value='';document.getElementById('pf_remember').checked=false;});
-  if(byId('pf_auto'))byId('pf_auto').addEventListener('change',e=>{if(e.target.checked&&!pfLoadToken())pfOpen();});
+  document.getElementById('btnrun').addEventListener('click',runObf);
+  const inp=document.getElementById('inp');
+  inp.addEventListener('input',()=>{if(inp.value.trim().toLowerCase()==='zumhub diag'){inp.value='';zdOpen();}});
+  document.getElementById('btncopy').addEventListener('click',cpOut);
+  document.getElementById('btnsave').addEventListener('click',saveLua);
+  document.getElementById('btnclear').addEventListener('click',clr);
+  document.getElementById('btntests').addEventListener('click',runTests);
+  document.getElementById('pf_settings').addEventListener('click',pfOpen);
+  document.getElementById('pf_close').addEventListener('click',pfClose);
+  document.getElementById('pf_save').addEventListener('click',()=>{const t=document.getElementById('pf_token').value.trim();pfSaveToken(t,document.getElementById('pf_remember').checked);pfClose();setSt(t?'Pastefy token saved.':'Pastefy token cleared.');});
+  document.getElementById('pf_clear').addEventListener('click',()=>{pfSaveToken('',false);document.getElementById('pf_token').value='';document.getElementById('pf_remember').checked=false;});
+  document.getElementById('pf_auto').addEventListener('change',e=>{if(e.target.checked&&!pfLoadToken())pfOpen();});
   bindAdvanced();
-  zdAdd('ok','UI initialized successfully.');
 }
-
-function bootUI(){
-  try{bindUI();}
-  catch(err){
-    zdAdd('error','UI initialization failed',{message:err.message,stack:err.stack});
-    const status=document.getElementById('st');
-    if(status)status.textContent='UI initialization error: '+err.message;
-  }
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootUI,{once:true});
-else bootUI();
+document.addEventListener('DOMContentLoaded',bindUI);
