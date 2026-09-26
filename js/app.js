@@ -115,7 +115,7 @@ async function pfUpload(content){
   const zdReqStart=performance.now();
   zdAdd('info','Pastefy upload started',{endpointHint:location.protocol==='file:'?'direct':'proxy',contentBytes:new Blob([content]).size});
   setSt('Uploading output to Pastefy...');
-  const body={title:document.getElementById('pf_title').value.trim()||'ZumObf output',content,visibility:document.getElementById('pf_visibility').value,type:'PASTE'};
+  const body={title:document.getElementById('pf_title').value.trim()||'ZumObf output',content,visibility:document.getElementById('pf_visibility').value,type:'LUA'};
   const folder=document.getElementById('pf_folder').value.trim();if(folder)body.folder=folder;
   const local=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
   const endpoint=local?'https://pastefy.app/api/v2/paste':'/api/pastefy';

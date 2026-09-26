@@ -465,9 +465,6 @@ function luaEsc(s){return s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\
 
 function emitVMLua(bc){
   const seed=rndI(1,250);
-  // Non-linear key schedule: each byte XORed with a value derived from seed, index,
-  // and a secondary oscillator so the pattern isn't a simple linear congruence.
-  const m1=rndI(11,29),m2=rndI(3,13),m3=rndI(1,7);
   const enc=[];
   for(let i=0;i<bc.length;i++){
     let x=bc[i];
@@ -476,20 +473,14 @@ function emitVMLua(bc){
     while(v>=128){enc.push((v%128)|128);v=Math.floor(v/128);}
     enc.push(v);
   }
-  for(let i=0;i<enc.length;i++)enc[i]=(enc[i]^(((seed*m1+i*m2+(i>>m3))%251+251)%251))&255;
+  for(let i=0;i<enc.length;i++)enc[i]=(enc[i]^((seed+i*17)%251))&255;
 
-  // Randomized struct field names — every emit produces different field names
-  // so two obfuscated outputs of the same source look structurally unrelated.
-  const fLoc=id(5),fOuter=id(5),fEnv=id(5),fArgs=id(5);
-  const fConsts=id(5),fCode=id(5),fProtos=id(5),fParams=id(5),fVararg=id(5);
-  const fRetV=id(4),fRetN=id(4);
-
-  const vmN=id(10),DE=id(3),EX=id(3),bcN=id(4),sdN=id(4),m1N=id(4),m2N=id(4),m3N=id(4),iN=id(3),posN=id(4);
+  const vmN=id(10),DE=id(3),EX=id(3),bcN=id(4),sdN=id(4),iN=id(3),posN=id(4);
   const frameN=id(4),stk=id(4),sp=id(3),pcN=id(3),codeN=id(4),KN=id(3),ins=id(3),opN=id(3);
   const bN=id(3),vN=id(3),tN=id(3),kN=id(3),aN=id(3),fnN=id(3),argsN=id(4),resN=id(4),nretN=id(3),outN=id(4);
   const cN=id(3),tmpN=id(3),pN=id(3),jN=id(3),sN=id(3),readN=id(3),zzN=id(3),unpackN=id(3),explicitN=id(3),totalN=id(3),outerN=id(4),envN=id(4),rN=id(3);
 
-  return `local ${sdN}=${seed};local ${m1N}=${m1};local ${m2N}=${m2};local ${m3N}=${m3};local ${bcN}={${enc.join(',')}};for ${iN}=1,#${bcN} do ${bcN}[${iN}]=(${bcN}[${iN}])~((((${sdN}*${m1N}+(${iN}-1)*${m2N}+bit32.rshift(${iN}-1,${m3N}))%251+251)%251)) end
+  return `local ${sdN}=${seed};local ${bcN}={${enc.join(',')}};for ${iN}=1,#${bcN} do ${bcN}[${iN}]=(${bcN}[${iN}])~(((${sdN}+(${iN}-1)*17)%251)) end
 local ${unpackN}=table.unpack or unpack
 local function ${readN}(${bcN},${posN})
  local ${zzN}=0;local ${sN}=0
@@ -501,33 +492,33 @@ local function ${readN}(${bcN},${posN})
  return ${zzN}/2,${posN}
 end
 local function ${DE}(${bcN},${posN})
- local ${pN}={${fConsts}={},${fCode}={},${fProtos}={},${fParams}=0,${fVararg}=false};local ${cN};${cN},${posN}=${readN}(${bcN},${posN})
+ local ${pN}={consts={},code={},protos={},params=0,vararg=false};local ${cN};${cN},${posN}=${readN}(${bcN},${posN})
  for ${iN}=1,${cN} do local ${tN};${tN},${posN}=${readN}(${bcN},${posN})
-  if ${tN}==3 then ${pN}.${fConsts}[${iN}]=nil
-  elseif ${tN}==2 then local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${pN}.${fConsts}[${iN}]=${vN}==1
-  else local ${sN};${sN},${posN}=${readN}(${bcN},${posN});local ${bN}={};for ${jN}=1,${sN} do local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${bN}[${jN}]=string.char(${vN}) end;local ${vN}=table.concat(${bN});${pN}.${fConsts}[${iN}]=(${tN}==0 and tonumber(${vN}) or ${vN}) end
+  if ${tN}==3 then ${pN}.consts[${iN}]=nil
+  elseif ${tN}==2 then local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${pN}.consts[${iN}]=${vN}==1
+  else local ${sN};${sN},${posN}=${readN}(${bcN},${posN});local ${bN}={};for ${jN}=1,${sN} do local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${bN}[${jN}]=string.char(${vN}) end;local ${vN}=table.concat(${bN});${pN}.consts[${iN}]=(${tN}==0 and tonumber(${vN}) or ${vN}) end
  end
- ${cN},${posN}=${readN}(${bcN},${posN});for ${iN}=1,${cN} do local ${sN};${sN},${posN}=${readN}(${bcN},${posN});local ${bN}={};for ${jN}=1,${sN} do local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${bN}[${jN}]=${vN} end;${pN}.${fCode}[${iN}]={${unpackN}(${bN})} end
- ${cN},${posN}=${readN}(${bcN},${posN});for ${iN}=1,${cN} do local ${vN};${vN},${posN}=${DE}(${bcN},${posN});${pN}.${fProtos}[${iN}]=${vN} end
- ${pN}.${fParams},${posN}=${readN}(${bcN},${posN});local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${pN}.${fVararg}=${vN}==1;return ${pN},${posN}
+ ${cN},${posN}=${readN}(${bcN},${posN});for ${iN}=1,${cN} do local ${sN};${sN},${posN}=${readN}(${bcN},${posN});local ${bN}={};for ${jN}=1,${sN} do local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${bN}[${jN}]=${vN} end;${pN}.code[${iN}]={${unpackN}(${bN})} end
+ ${cN},${posN}=${readN}(${bcN},${posN});for ${iN}=1,${cN} do local ${vN};${vN},${posN}=${DE}(${bcN},${posN});${pN}.protos[${iN}]=${vN} end
+ ${pN}.params,${posN}=${readN}(${bcN},${posN});local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${pN}.vararg=${vN}==1;return ${pN},${posN}
 end
 local function ${EX}(${pN},${frameN},${argsN})
- local ${stk}={};local ${sp}=0;local ${pcN}=1;local ${codeN}=${pN}.${fCode};local ${KN}=${pN}.${fConsts};local ${resN}={};local ${nretN}=0
+ local ${stk}={};local ${sp}=0;local ${pcN}=1;local ${codeN}=${pN}.code;local ${KN}=${pN}.consts;local ${resN}={};local ${nretN}=0
  local function push(v) ${sp}=${sp}+1;${stk}[${sp}]=v end
  local function pop() local v=${stk}[${sp}];${stk}[${sp}]=nil;${sp}=${sp}-1;return v end
- local function walk(d) local f=${frameN};for ${jN}=1,d do f=f.${fOuter} end;return f end
- for ${iN}=1,${pN}.${fParams} do ${frameN}.${fLoc}[${iN}]=(${argsN} or {})[${iN}] end
+ local function walk(d) local f=${frameN};for ${jN}=1,d do f=f.outer end;return f end
+ for ${iN}=1,${pN}.params do ${frameN}.loc[${iN}]=(${argsN} or {})[${iN}] end
  while ${pcN}<=#${codeN} do
   local ${ins}=${codeN}[${pcN}];local ${opN}=${ins}[1];${pcN}=${pcN}+1
   if ${opN}==0 then push(${KN}[${ins}[2]+1])
   elseif ${opN}==1 then push(nil)
   elseif ${opN}==2 then push(${ins}[2]==1)
-  elseif ${opN}==3 then push(${frameN}.${fLoc}[${ins}[2]+1])
-  elseif ${opN}==4 then ${frameN}.${fLoc}[${ins}[2]+1]=pop()
-  elseif ${opN}==5 then push(${frameN}.${fEnv}[${KN}[${ins}[2]+1]])
-  elseif ${opN}==6 then ${frameN}.${fEnv}[${KN}[${ins}[2]+1]]=pop()
-  elseif ${opN}==7 then local ${tmpN}=walk(${ins}[2]);push(${tmpN}.${fLoc}[${ins}[3]+1])
-  elseif ${opN}==8 then local ${tmpN}=walk(${ins}[2]);${tmpN}.${fLoc}[${ins}[3]+1]=pop()
+  elseif ${opN}==3 then push(${frameN}.loc[${ins}[2]+1])
+  elseif ${opN}==4 then ${frameN}.loc[${ins}[2]+1]=pop()
+  elseif ${opN}==5 then push(${frameN}.env[${KN}[${ins}[2]+1]])
+  elseif ${opN}==6 then ${frameN}.env[${KN}[${ins}[2]+1]]=pop()
+  elseif ${opN}==7 then local ${tmpN}=walk(${ins}[2]);push(${tmpN}.loc[${ins}[3]+1])
+  elseif ${opN}==8 then local ${tmpN}=walk(${ins}[2]);${tmpN}.loc[${ins}[3]+1]=pop()
   elseif ${opN}==10 then local ${bN}=pop();local ${aN}=pop();push(${aN}+${bN})
   elseif ${opN}==11 then local ${bN}=pop();local ${aN}=pop();push(${aN}-${bN})
   elseif ${opN}==12 then local ${bN}=pop();local ${aN}=pop();push(${aN}*${bN})
@@ -554,11 +545,11 @@ local function ${EX}(${pN},${frameN},${argsN})
   elseif ${opN}==42 then local ${tN}=pop();push(${tN}[${KN}[${ins}[3]+1]])
   elseif ${opN}==43 then local ${vN}=pop();local ${kN}=pop();local ${tN}=${stk}[${sp}];${tN}[${kN}]=${vN}
   elseif ${opN}==44 then local ${kN}=pop();local ${tN}=pop();push(${tN}[${kN}])
-  elseif ${opN}==50 then local ${fnN}=${pN}.${fProtos}[${ins}[2]+1];local ${outerN}=${frameN};local ${envN}=${frameN}.${fEnv};push(function(...) local ${aN}={...};local ${rN}=${EX}(${fnN},{${fLoc}={},${fOuter}=${outerN},${fEnv}=${envN},${fArgs}=${aN}},${aN});return ${unpackN}(${rN}.${fRetV},1,${rN}.${fRetN}) end)
+  elseif ${opN}==50 then local ${fnN}=${pN}.protos[${ins}[2]+1];local ${outerN}=${frameN};local ${envN}=${frameN}.env;push(function(...) local ${aN}={...};local ${rN}=${EX}(${fnN},{loc={},outer=${outerN},env=${envN},args=${aN}},${aN});return ${unpackN}(${rN}.v,1,${rN}.n) end)
   elseif ${opN}==51 then local ${aN}={};for ${jN}=${ins}[2],1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}=table.pack(${fnN}(${unpackN}(${aN})))
    local ${cN}=${outN}.n or #${outN};if ${ins}[3]==-1 then for ${jN}=1,${cN} do push(${outN}[${jN}]) end else for ${jN}=1,${ins}[3] do push(${outN}[${jN}]) end end
-  elseif ${opN}==52 then ${nretN}=${ins}[2];if ${nretN}<0 then ${nretN}=${sp} end;for ${jN}=${nretN},1,-1 do ${resN}[${jN}]=pop() end;return{${fRetN}=${nretN},${fRetV}=${resN}}
-  elseif ${opN}==53 then local ${explicitN}=${ins}[2];local ${totalN}=#(${frameN}.${fArgs} or {})-${pN}.${fParams};if ${explicitN} and ${explicitN}>=0 then ${totalN}=math.min(${totalN},${explicitN}) end;for ${jN}=1,${totalN} do push((${frameN}.${fArgs} or {})[${pN}.${fParams}+${jN}]) end
+  elseif ${opN}==52 then ${nretN}=${ins}[2];if ${nretN}<0 then ${nretN}=${sp} end;for ${jN}=${nretN},1,-1 do ${resN}[${jN}]=pop() end;return{n=${nretN},v=${resN}}
+  elseif ${opN}==53 then local ${explicitN}=${ins}[2];local ${totalN}=#(${frameN}.args or {})-${pN}.params;if ${explicitN} and ${explicitN}>=0 then ${totalN}=math.min(${totalN},${explicitN}) end;for ${jN}=1,${totalN} do push((${frameN}.args or {})[${pN}.params+${jN}]) end
   elseif ${opN}==60 then pop()
   elseif ${opN}==61 then push(${stk}[${sp}])
   elseif ${opN}==62 then local ${aN}=pop();local ${bN}=pop();push(${aN});push(${bN})
@@ -569,25 +560,99 @@ local function ${EX}(${pN},${frameN},${argsN})
   elseif ${opN}==67 then push(bit32.bnot(pop()))
   elseif ${opN}==68 then local ${bN}=pop();local ${aN}=pop();push(bit32.lshift(${aN},${bN}))
   elseif ${opN}==69 then local ${bN}=pop();local ${aN}=pop();push(bit32.rshift(${aN},${bN}))
-  elseif ${opN}==70 then local ${explicitN}=${ins}[2];local ${totalN}=${explicitN}+#(${frameN}.${fArgs} or {});local ${aN}={};for ${jN}=${totalN},1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}=table.pack(${fnN}(${unpackN}(${aN})))
+  elseif ${opN}==70 then local ${explicitN}=${ins}[2];local ${totalN}=${explicitN}+#(${frameN}.args or {});local ${aN}={};for ${jN}=${totalN},1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}=table.pack(${fnN}(${unpackN}(${aN})))
    local ${cN}=${outN}.n or #${outN};local ${nretN}=${ins}[3] or -1;if ${nretN}<0 then ${nretN}=${cN} end;for ${jN}=1,${nretN} do push(${outN}[${jN}]) end
   elseif ${opN}==71 then local ${aN}=pop();local ${bN}=pop();push(${bN});push(${aN});push(${bN});push(${aN}) end
  end
- return{${fRetN}=0,${fRetV}={}}
+ return{n=0,v={}}
 end
-local ${pN},${posN}=${DE}(${bcN},1);${EX}(${pN},{${fLoc}={},${fOuter}=nil,${fEnv}=_G,${fArgs}={}},{} )`;
+local ${pN},${posN}=${DE}(${bcN},1);${EX}(${pN},{loc={},outer=nil,env=_G,args={}},{} )`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // V4 WRAPPING LAYERS (applied after VM emit)
 // ══════════════════════════════════════════════════════════════════════════════
 function L_var(code){
-  const map={};
-  code=code.replace(/\blocal\s+function\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(!map[n])map[n]=id();return'local function '+map[n];});
-  const _LUA_KW=new Set(['and','break','continue','do','else','elseif','end','false','for','function','if','in','local','nil','not','or','repeat','return','then','true','type','until','while']);
-  code=code.replace(/\blocal\s+([a-zA-Z_]\w*)/g,(m,n)=>{if(_LUA_KW.has(n))return m;if(!map[n])map[n]=id();return'local '+map[n];});
-  for(const[k,v]of Object.entries(map))code=code.replace(new RegExp('\\b'+k+'\\b','g'),v);
-  return code;
+  // Safe identifier mangling.
+  // VM output already uses randomized identifiers, so worker.js skips this
+  // pass in VM mode. This implementation is retained for fallback mode and
+  // protects strings/comments/property names from accidental replacement.
+  const reserved=new Set([
+    'and','break','continue','do','else','elseif','end','false','for',
+    'function','if','in','local','nil','not','or','repeat','return',
+    'then','true','type','until','while'
+  ]);
+  const saved=[];
+  let masked='',i=0;
+
+  function save(raw){const key='\u0001'+saved.length+'\u0002';saved.push(raw);masked+=key;}
+
+  while(i<code.length){
+    const c=code[i],n=code[i+1];
+
+    if(c==='"'||c==="'"){
+      const q=c;let j=i+1,esc=false;
+      while(j<code.length){
+        const x=code[j];
+        if(esc){esc=false;j++;continue;}
+        if(x==='\\'){esc=true;j++;continue;}
+        if(x===q){j++;break;}
+        j++;
+      }
+      save(code.slice(i,j));i=j;continue;
+    }
+
+    if(c==='-'&&n==='-'){
+      if(code[i+2]==='['&&code[i+3]==='['){
+        let j=i+4;
+        while(j<code.length&&!(code[j]===']'&&code[j+1]===']'))j++;
+        j=Math.min(code.length,j+2);save(code.slice(i,j));i=j;
+      }else{
+        let j=i+2;while(j<code.length&&code[j]!=='\n'&&code[j]!=='\r')j++;
+        save(code.slice(i,j));i=j;
+      }
+      continue;
+    }
+
+    masked+=c;i++;
+  }
+
+  // Collect names declared by local declarations. We deliberately do not
+  // attempt a fake global scope analysis: generated fallback code is safest
+  // when only clearly declared locals are renamed.
+  const names=new Set();
+  const decl=/\blocal\s+(?:function\s+)?([A-Za-z_]\w*)/g;
+  let m;
+  while((m=decl.exec(masked))){
+    if(!reserved.has(m[1]))names.add(m[1]);
+  }
+
+  // Handle `local a,b,c = ...` declarations.
+  const multi=/\blocal\s+([^;\n]*)/g;
+  while((m=multi.exec(masked))){
+    const lhs=m[1].split('=')[0];
+    for(const item of lhs.split(',')){
+      const q=item.match(/^\s*([A-Za-z_]\w*)/);
+      if(q&&!reserved.has(q[1]))names.add(q[1]);
+    }
+  }
+
+  const map=Object.create(null);
+  for(const name of names)map[name]=id();
+
+  let out='',last=0;
+  const ident=/[A-Za-z_]\w*/g;
+  while((m=ident.exec(masked))){
+    const name=m[0],pos=m.index;
+    out+=masked.slice(last,pos);
+    const prev=masked[pos-1];
+    // `obj.field` and `obj:method` member names are not variables.
+    out+=(map[name]&&prev!=='.'&&prev!==':')?map[name]:name;
+    last=pos+name.length;
+  }
+  out+=masked.slice(last);
+
+  return out.replace(/\u0001(\d+)\u0002/g,(_,n)=>saved[Number(n)]);
 }
 function L_junk(code,intensity){
   const lines=code.split('\n'),out=[];
@@ -614,17 +679,53 @@ function L_dead(code){
   return out.join('\n');
 }
 function L_poly(code){
-  const KEY=rndI(5,250),s1=rndI(2,20),off=rndI(1,20);
-  const s2=Math.ceil((KEY-off)/s1)+rndI(0,2),KEY2=((s1*s2)%251)+off;
-  const kv=id(),sv1=id(4),sv2=id(4),ov=id(4),dFn=id(10);
-  const keyX=`local ${sv1}=${s1};local ${sv2}=${s2};local ${ov}=${off};local ${kv}=(${sv1}*${sv2})%251+${ov};`;
-  const dec=`${keyX}local function ${dFn}(s) local r={} for i=1,#s do r[i]=string.char(bit32.bxor(string.byte(s,i),${kv})) end return table.concat(r) end\n`;
-  const t=code.replace(/"((?:[^"\\]|\\.)*)"/g,(m,s)=>{
-    if(!s||s.length>300)return m;
-    let enc='';for(let i=0;i<s.length;i++)enc+='\\'+( s.charCodeAt(i)^KEY2);
-    return`${dFn}("${enc}")`;
-  });
-  return dec+t;
+  // Safe polymorphic string transform.
+  // Only plain string literals are encoded. Escaped literals are preserved
+  // because rewriting their source text can change Luau escape semantics.
+  const KEY=rndI(5,250);
+  const fn=id(10),kv=id(),arr=id(4),iN=id(4),ch=id(4);
+  const prefix=`local ${kv}=${KEY};local function ${fn}(s)local ${arr}={};for ${iN}=1,#s do ${arr}[${iN}]=string.char(bit32.bxor(string.byte(s,${iN}),${kv})) end;return table.concat(${arr}) end\n`;
+
+  let out='',i=0;
+  while(i<code.length){
+    if(code[i]==='"'){
+      let j=i+1,esc=false;
+      while(j<code.length){
+        const c=code[j];
+        if(esc){esc=false;j++;continue;}
+        if(c==='\\'){esc=true;j++;continue;}
+        if(c==='"'){j++;break;}
+        j++;
+      }
+      const raw=code.slice(i,j);
+      if(raw.length>=2&&!raw.includes('\\')){
+        const body=raw.slice(1,-1);
+        if(body.length&&body.length<=300){
+          let enc='';
+          for(let k=0;k<body.length;k++)enc+=String.fromCharCode(body.charCodeAt(k)^KEY);
+          // Lua source needs the encoded bytes represented as decimal escapes.
+          const escaped=[...enc].map(x=>'\\'+x.charCodeAt(0)).join('');
+          out+=`${fn}("${escaped}")`;
+        }else out+=raw;
+      }else out+=raw;
+      i=j;continue;
+    }
+    if(code[i]==="'" ){
+      // Leave single-quoted literals untouched; the compiler-generated VM
+      // primarily uses double-quoted strings and this avoids parser surprises.
+      let j=i+1,esc=false;
+      while(j<code.length){
+        const c=code[j];
+        if(esc){esc=false;j++;continue;}
+        if(c==='\\'){esc=true;j++;continue;}
+        if(c==="'"){j++;break;}
+        j++;
+      }
+      out+=code.slice(i,j);i=j;continue;
+    }
+    out+=code[i++];
+  }
+  return prefix+out;
 }
 function L_scope(code){
   let r=code;for(let i=0;i<3;i++){const a=id(),b=id();r=`do\nlocal ${a}=${rndI(1,999)};local ${b}=nil;\n${r}\n${a}=nil;\nend`;}
@@ -654,9 +755,16 @@ function L_fallbackFull(code){
 function pad(code,target){
   if(!target||target<=0||code.length>=target)return code;
   const names=['getService','waitForChild','findPlayer','checkBounds','updateState','clampValue','fetchData'];
-  let p='';
-  while(p.length<target-code.length){const f=names[rndI(0,names.length-1)]+id(3),a=id(4),b=id(4);p+=`local function ${f}(${a},${b}) if type(${a})~="nil" then return ${b} end return nil end\n`;}
-  return p.slice(0,target-code.length)+code;
+  let padding='';
+  while(code.length+padding.length<target){
+    const f=names[rndI(0,names.length-1)]+id(3);
+    const a=id(4),b=id(4);
+    const stmt=`local function ${f}(${a},${b}) if type(${a})~="nil" then return ${b} end return nil end\n`;
+    padding+=stmt;
+  }
+  // Never slice a Lua statement in half. A valid output is more important
+  // than hitting targetBytes exactly.
+  return padding+code;
 }
 function compact(c){return c.replace(/\r?\n/g,' ').replace(/\t/g,' ').replace(/ {2,}/g,' ').trim();}
 
