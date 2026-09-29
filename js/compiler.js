@@ -1,774 +1,795 @@
-// ══════════════════════════════════════════════════════════════════════════════
-// LEXER
-// ══════════════════════════════════════════════════════════════════════════════
-const TK={NUM:'NUM',STR:'STR',NAME:'NAME',TRUE:'true',FALSE:'false',NIL:'nil',AND:'and',OR:'or',NOT:'not',LOCAL:'local',FUNCTION:'function',IF:'if',THEN:'then',ELSE:'else',ELSEIF:'elseif',END:'end',WHILE:'while',DO:'do',FOR:'for',IN:'in',REPEAT:'repeat',UNTIL:'until',RETURN:'return',BREAK:'break',CONTINUE:'continue',DOTDOT:'..',DOTDOTDOT:'...',EQ:'==',NEQ:'~=',LTE:'<=',GTE:'>=',LT:'<',GT:'>',ASSIGN:'=',ADDASSIGN:'+=',SUBASSIGN:'-=',MULASSIGN:'*=',DIVASSIGN:'/=',MODASSIGN:'%=',PLUS:'+',MINUS:'-',STAR:'*',SLASH:'/',PERCENT:'%',CARET:'^',IDIV:'//',BAND:'&',BOR:'|',BXOR:'~',SHL:'<<',SHR:'>>',HASH:'#',DOT:'.',COLON:':',SEMI:';',COMMA:',',LPAREN:'(',RPAREN:')',LBRACKET:'[',RBRACKET:']',LBRACE:'{',RBRACE:'}',EOF:'EOF'};
-const KW=new Set(['and','or','not','local','function','if','then','else','elseif','end','while','do','for','in','repeat','until','return','break','continue','true','false','nil']);
-function lex(src){const toks=[];let i=0;while(i<src.length){if(/\s/.test(src[i])){i++;continue;}if(src[i]==='-'&&src[i+1]==='-'){if(src[i+2]==='['&&src[i+3]==='['){i+=4;while(i<src.length&&!(src[i]===']'&&src[i+1]===']'))i++;i+=2;}else{while(i<src.length&&src[i]!=='\n')i++;}continue;}if(src[i]==='['&&src[i+1]==='['){i+=2;let s='';while(i<src.length&&!(src[i]===']'&&src[i+1]===']')){s+=src[i++];}i+=2;toks.push({t:TK.STR,v:s});continue;}if(src[i]==='"'||src[i]==="'"){const q=src[i++];let s='';while(i<src.length&&src[i]!==q){if(src[i]==='\\'){i++;const e=src[i++];if(e==='n')s+='\n';else if(e==='t')s+='\t';else if(e==='r')s+='\r';else if(e==='\\')s+='\\';else if(e==='"')s+='"';else if(e==="'")s+="'";else if(/\d/.test(e)){let n=e;if(/\d/.test(src[i]))n+=src[i++];if(/\d/.test(src[i]))n+=src[i++];s+=String.fromCharCode(parseInt(n));}else s+=e;}else s+=src[i++];}i++;toks.push({t:TK.STR,v:s});continue;}if(/\d/.test(src[i])||(src[i]==='.'&&/\d/.test(src[i+1]))){let n='';if(src[i]==='0'&&(src[i+1]==='x'||src[i+1]==='X')){n='0x';i+=2;while(i<src.length&&/[0-9a-fA-F]/.test(src[i]))n+=src[i++];}else{while(i<src.length&&(/\d/.test(src[i])||src[i]==='.'||src[i]==='e'||src[i]==='E'))n+=src[i++];}toks.push({t:TK.NUM,v:Number(n)});continue;}if(/[a-zA-Z_]/.test(src[i])){let n='';while(i<src.length&&/\w/.test(src[i]))n+=src[i++];toks.push({t:KW.has(n)?n:TK.NAME,v:n});continue;}const three=src.slice(i,i+3);if(three==='...'){toks.push({t:TK.DOTDOTDOT,v:'...'});i+=3;continue;}const two=src.slice(i,i+2);const cmap={'+=':TK.ADDASSIGN,'-=':TK.SUBASSIGN,'*=':TK.MULASSIGN,'/=':TK.DIVASSIGN,'%=':TK.MODASSIGN};if(cmap[two]){toks.push({t:cmap[two],v:two});i+=2;continue;}const dmap={'==':TK.EQ,'~=':TK.NEQ,'<=':TK.LTE,'>=':TK.GTE,'..':TK.DOTDOT,'//':TK.IDIV,'<<':TK.SHL,'>>':TK.SHR};if(dmap[two]){toks.push({t:dmap[two],v:two});i+=2;continue;}const smap={'=':TK.ASSIGN,'+':TK.PLUS,'-':TK.MINUS,'*':TK.STAR,'/':TK.SLASH,'%':TK.PERCENT,'^':TK.CARET,'#':TK.HASH,'&':TK.BAND,'|':TK.BOR,'~':TK.BXOR,'.':TK.DOT,':':TK.COLON,';':TK.SEMI,',':TK.COMMA,'(':TK.LPAREN,')':TK.RPAREN,'[':TK.LBRACKET,']':TK.RBRACKET,'{':TK.LBRACE,'}':TK.RBRACE,'<':TK.LT,'>':TK.GT};if(smap[src[i]]){toks.push({t:smap[src[i]],v:src[i]});i++;continue;}i++;}toks.push({t:TK.EOF,v:null});return toks;}
+// ZumHub Obfuscator v9 — Source-Transform Architecture
+// No VM. Real Luau. Executor-compatible.
+// --DoggoJr Is Here
 
-// ══════════════════════════════════════════════════════════════════════════════
-// OPCODES
-// ══════════════════════════════════════════════════════════════════════════════
-const OP={LOAD_K:0,LOAD_NIL:1,LOAD_BOOL:2,LOAD_VAR:3,STORE_VAR:4,LOAD_GLOBAL:5,STORE_GLOBAL:6,LOAD_UPVALUE:7,STORE_UPVALUE:8,ADD:10,SUB:11,MUL:12,DIV:13,MOD:14,POW:15,UNM:16,CONCAT:17,LEN:18,EQ:20,NEQ:21,LT:22,LTE:23,GT:24,GTE:25,NOT:26,AND:27,OR:28,JMP:30,JMP_FALSE:31,JMP_TRUE:32,NEW_TABLE:40,SET_FIELD:41,GET_FIELD:42,SET_INDEX:43,GET_INDEX:44,MAKE_CLOSURE:50,CALL:51,RETURN:52,VARARG:53,POP:60,DUP:61,SWAP:62,IDIV:63,BAND:64,BOR:65,BXOR:66,BNOT:67,SHL:68,SHR:69,CALL_VAR:70,DUP2:71};
+'use strict';
 
-// ══════════════════════════════════════════════════════════════════════════════
-// COMPILER
-// ══════════════════════════════════════════════════════════════════════════════
-class Compiler{
-  constructor(parent=null){this.code=[];this.consts=[];this.protos=[];this.locals=[];this.depth=0;this.breaks=[];this.continues=[];this.parent=parent;this.nextLocal=0;}
-  addConst(v){const i=this.consts.findIndex(c=>c===v);if(i>=0)return i;this.consts.push(v);return this.consts.length-1;}
-  emit(...a){this.code.push(a);return this.code.length-1;}
-  patch(i,f,v){this.code[i][f]=v;}
-  here(){return this.code.length;}
-  findLocal(n){for(let i=this.locals.length-1;i>=0;i--)if(this.locals[i].name===n)return this.locals[i].slot;return -1;}
-  resolveUpvalue(n){let c=this.parent,d=1;while(c){const slot=c.findLocal(n);if(slot>=0)return{depth:d,slot};c=c.parent;d++;}return null;}
-  pushLocal(n){this.locals.push({name:n,depth:this.depth,slot:this.nextLocal++});}
-  popScope(){while(this.locals.length&&this.locals[this.locals.length-1].depth>=this.depth)this.locals.pop();}
+const IDS=['l','I','1','O','0'];
+const _uid=new Set();
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function id(n){
+  n=n||rnd(8,14);
+  let s,t=0;
+  do{s='_';for(let i=0;i<n;i++)s+=IDS[rnd(0,4)];t++;}
+  while(_uid.has(s)&&t<2000);
+  _uid.add(s);return s;
+}
+function resetIds(){_uid.clear();}
 
-  compileBlock(p){this.depth++;while(!['end','else','elseif','until',TK.EOF].includes(p.peek().t)){this.compileStat(p);if(p.peek().t===TK.SEMI)p.next();}this.popScope();this.depth--;}
+function luaStr(s){
+  const bytes=[];
+  for(let i=0;i<s.length;i++){
+    const cp=s.charCodeAt(i);
+    if(cp<=0x7F)bytes.push(cp);
+    else if(cp<=0x7FF){bytes.push(0xC0|(cp>>6));bytes.push(0x80|(cp&0x3F));}
+    else{bytes.push(0xE0|(cp>>12));bytes.push(0x80|((cp>>6)&0x3F));bytes.push(0x80|(cp&0x3F));}
+  }
+  let out='"';
+  for(const b of bytes){
+    if(b===34)out+='\\"';
+    else if(b===92)out+='\\\\';
+    else if(b===10)out+='\\n';
+    else if(b===13)out+='\\r';
+    else if(b===0)out+='\\0';
+    else if(b<32||b>126)out+='\\'+b;
+    else out+=String.fromCharCode(b);
+  }
+  return out+'"';
+}
 
-  compileStat(p){
-    const tk=p.peek();
-    if(tk.t===TK.NAME&&tk.v==='type'){
-      p.next();p.expect(TK.NAME);p.expect(TK.ASSIGN);
-      if(p.peek().t===TK.LBRACE)this.skipTypeExpr(p);else if(p.peek().t!==TK.EOF)p.next();
+// ── Tokenizer ─────────────────────────────────────────────────────────────
+const KW=new Set(['and','break','do','else','elseif','end','false','for',
+  'function','if','in','local','nil','not','or','repeat','return','then',
+  'true','until','while','continue','type','goto']);
+
+function tokenize(src){
+  const toks=[];let i=0;
+  const len=src.length;
+  while(i<len){
+    if(/\s/.test(src[i])){i++;continue;}
+    // comments
+    if(src[i]==='-'&&src[i+1]==='-'){
+      if(src[i+2]==='['){
+        let eq=0,j=i+3;while(src[j]==='='){eq++;j++;}
+        if(src[j]==='['){
+          i=j+1;const cl=']'+'='.repeat(eq)+']';
+          const e=src.indexOf(cl,i);i=e<0?len:e+cl.length;continue;
+        }
+      }
+      while(i<len&&src[i]!=='\n')i++;continue;
     }
-    else if(tk.t===TK.LOCAL){
-      p.next();
-      if(p.peek().t===TK.FUNCTION){p.next();const name=p.expect(TK.NAME).v;this.pushLocal(name);this.compileFunction(p);this.emit(OP.STORE_VAR,this.findLocal(name));}
-      else{
-        const names=[];names.push(p.expect(TK.NAME).v);
-        if(p.peek().t===TK.COLON){p.next();if(p.peek().t===TK.LBRACE){this.skipTypeExpr(p);}else p.next();}
-        while(p.peek().t===TK.COMMA){p.next();names.push(p.expect(TK.NAME).v);if(p.peek().t===TK.COLON){p.next();if(p.peek().t===TK.LBRACE){this.skipTypeExpr(p);}else p.next();}}
-        if(p.peek().t===TK.ASSIGN){
-          p.next();
-          const rhs=[];
-          this.compileExpr(p);
-          rhs.push(this.code[this.code.length-1]);
-          while(p.peek().t===TK.COMMA){
-            p.next();
-            this.compileExpr(p);
-            rhs.push(this.code[this.code.length-1]);
-          }
-          const lastInstr=rhs[rhs.length-1];
-          const remaining=Math.max(1,names.length-rhs.length+1);
-          if(lastInstr&&[OP.CALL,OP.CALL_VAR].includes(lastInstr[0])&&rhs.length===1)lastInstr[2]=names.length;
-          else if(lastInstr&&[OP.CALL,OP.CALL_VAR].includes(lastInstr[0]))lastInstr[2]=remaining;
-          else if(lastInstr&&lastInstr[0]===OP.VARARG)lastInstr[1]=remaining;
-          const producedKnown=rhs.length-1+((lastInstr&&lastInstr[0]===OP.CALL)|| (lastInstr&&lastInstr[0]===OP.VARARG)?remaining:1);
-          for(let i=producedKnown;i>names.length;i--)this.emit(OP.POP);
-          for(let i=producedKnown;i<names.length;i++)this.emit(OP.LOAD_NIL);
-        } else for(const _ of names)this.emit(OP.LOAD_NIL);
-        for(let i=names.length-1;i>=0;i--){this.pushLocal(names[i]);this.emit(OP.STORE_VAR,this.findLocal(names[i]));}
+    // long strings
+    if(src[i]==='['&&(src[i+1]==='['||src[i+1]==='=')){
+      let eq=0,j=i+1;while(src[j]==='='){eq++;j++;}
+      if(src[j]==='['){
+        i=j+1;const cl=']'+'='.repeat(eq)+']';
+        const e=src.indexOf(cl,i);
+        const v=e<0?src.slice(i):src.slice(i,e);
+        toks.push({t:'STR',v:v.replace(/^\n/,'')});
+        i=e<0?len:e+cl.length;continue;
       }
     }
-    else if(tk.t===TK.FUNCTION){
-      p.next();
-      const parts=[p.expect(TK.NAME).v];
-      let method=false;
-      while(p.peek().t===TK.DOT||p.peek().t===TK.COLON){
-        method=p.next().t===TK.COLON;
-        parts.push(p.expect(TK.NAME).v);
+    // quoted strings
+    if(src[i]==='"'||src[i]==="'"){
+      const q=src[i++];let s='';
+      while(i<len&&src[i]!==q){
+        if(src[i]==='\\'){i++;
+          const e=src[i++];
+          if(e==='n')s+='\n';else if(e==='t')s+='\t';else if(e==='r')s+='\r';
+          else if(e==='0')s+='\0';else if(e==='\\')s+='\\';else if(e==='"')s+='"';
+          else if(e==="'")s+="'";else if(e==='z'){while(i<len&&/\s/.test(src[i]))i++;}
+          else if(/\d/.test(e)){let n=e;while(/\d/.test(src[i])&&n.length<3)n+=src[i++];s+=String.fromCharCode(parseInt(n));}
+          else if(e==='x'){const h=src[i++]+src[i++];s+=String.fromCharCode(parseInt(h,16));}
+          else if(e==='u'){i++;let h='';while(src[i]!=='}')h+=src[i++];i++;s+=String.fromCodePoint(parseInt(h,16));}
+          else s+=e;
+        }else s+=src[i++];
       }
-      if(parts.length===1){
-        const name=parts[0];this.compileFunction(p);
-        const li=this.findLocal(name);if(li>=0)this.emit(OP.STORE_VAR,li);else this.emit(OP.STORE_GLOBAL,this.addConst(name));
+      i++;toks.push({t:'STR',v:s});continue;
+    }
+    // numbers
+    if(/\d/.test(src[i])||(src[i]==='.'&&/\d/.test(src[i+1]))){
+      let n='';
+      if(src[i]==='0'&&/[xX]/.test(src[i+1])){
+        n+=src[i++]+src[i++];while(/[0-9a-fA-F_]/.test(src[i]))n+=src[i++];
       }else{
-        const root=parts[0];
-        const rli=this.findLocal(root);
-        if(rli>=0)this.emit(OP.LOAD_VAR,rli);
-        else {const rup=this.resolveUpvalue(root);if(rup)this.emit(OP.LOAD_UPVALUE,rup.depth,rup.slot);else this.emit(OP.LOAD_GLOBAL,this.addConst(root));}
-        for(let i=1;i<parts.length-1;i++)this.emit(OP.GET_FIELD,-1,this.addConst(parts[i]));
-        this.compileFunction(p,method);
-        this.emit(OP.SET_FIELD,-1,this.addConst(parts[parts.length-1]));
-        this.emit(OP.POP);
+        while(/[\d_]/.test(src[i]))n+=src[i++];
+        if(src[i]==='.'&&src[i+1]!=='.'){n+=src[i++];while(/[\d_]/.test(src[i]))n+=src[i++];}
+        if(/[eE]/.test(src[i])){n+=src[i++];if(/[+-]/.test(src[i]))n+=src[i++];while(/\d/.test(src[i]))n+=src[i++];}
       }
+      toks.push({t:'NUM',v:n.replace(/_/g,'')});continue;
     }
-    else if(tk.t===TK.IF){
-      p.expect('if');this.compileExpr(p);p.expect('then');
-      const jf=this.emit(OP.JMP_FALSE,0);this.compileBlock(p);
-      const jumps=[this.emit(OP.JMP,0)];this.patch(jf,1,this.here());
-      while(p.peek().t==='elseif'){p.next();this.compileExpr(p);p.expect('then');const jf2=this.emit(OP.JMP_FALSE,0);this.compileBlock(p);jumps.push(this.emit(OP.JMP,0));this.patch(jf2,1,this.here());}
-      if(p.peek().t==='else'){p.next();this.compileBlock(p);}
-      p.expect('end');const end=this.here();for(const j of jumps)this.patch(j,1,end);
+    // identifiers / keywords
+    if(/[a-zA-Z_]/.test(src[i])){
+      let n='';while(i<len&&/\w/.test(src[i]))n+=src[i++];
+      toks.push({t:KW.has(n)?n:'NAME',v:n});continue;
     }
-    else if(tk.t===TK.WHILE){
-      p.next();const top=this.here();this.compileExpr(p);p.expect('do');
-      const jf=this.emit(OP.JMP_FALSE,0);const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
-      this.compileBlock(p);p.expect('end');this.emit(OP.JMP,top);
-      const end=this.here();this.patch(jf,1,end);for(const b of this.breaks)this.patch(b,1,end);for(const c of this.continues)this.patch(c,1,top);this.breaks=sb;this.continues=sc;
+    // multi-char ops
+    const two=src.slice(i,i+2);
+    const three=src.slice(i,i+3);
+    if(three==='...'){toks.push({t:'...',v:'...'});i+=3;continue;}
+    if(three==='..='){toks.push({t:'..=',v:'..='});i+=3;continue;}
+    if(two==='..'){toks.push({t:'..',v:'..'});i+=2;continue;}
+    if(two==='=='){toks.push({t:'==',v:'=='});i+=2;continue;}
+    if(two==='~='){toks.push({t:'~=',v:'~='});i+=2;continue;}
+    if(two==='<='){toks.push({t:'<=',v:'<='});i+=2;continue;}
+    if(two==='>='){toks.push({t:'>=',v:'>='});i+=2;continue;}
+    if(two==='<<'){toks.push({t:'<<',v:'<<'});i+=2;continue;}
+    if(two==='>>'){toks.push({t:'>>',v:'>>'});i+=2;continue;}
+    if(two==='->'){toks.push({t:'->',v:'->'});i+=2;continue;}
+    if(two==='::'){toks.push({t:'::',v:'::'});i+=2;continue;}
+    if(two==='//'){toks.push({t:'//',v:'//'});i+=2;continue;}
+    if(two==='+='){toks.push({t:'+=',v:'+='});i+=2;continue;}
+    if(two==='-='){toks.push({t:'-=',v:'-='});i+=2;continue;}
+    if(two==='*='){toks.push({t:'*=',v:'*='});i+=2;continue;}
+    if(two==='/='){toks.push({t:'/=',v:'/='});i+=2;continue;}
+    if(two==='%='){toks.push({t:'%=',v:'%='});i+=2;continue;}
+    toks.push({t:src[i],v:src[i]});i++;
+  }
+  toks.push({t:'EOF',v:''});
+  return toks;
+}
+
+// ── Parser ─────────────────────────────────────────────────────────────────
+function parse(src){
+  const toks=tokenize(src);
+  let pos=0;
+  const len=toks.length;
+  function peek(off=0){return toks[Math.min(pos+(off|0),len-1)];}
+  function next(){const t=toks[Math.min(pos,len-1)];pos++;return t;}
+  function eat(t){const tk=next();if(tk.t!==t)throw new Error('Expected '+t+', got '+tk.t+' ('+tk.v+') at '+pos);return tk;}
+  function check(t){return peek().t===t;}
+  function match(...ts){if(ts.includes(peek().t)){return next();}return null;}
+
+  const BLOCK_STOP=new Set(['else','elseif','end','until','EOF']);
+
+  function parseBlock(){
+    const body=[];
+    while(!BLOCK_STOP.has(peek().t)){
+      while(check(';'))next();
+      if(BLOCK_STOP.has(peek().t))break;
+      const s=parseStat();
+      if(s){body.push(s);if(s.t==='return')break;}
     }
-    else if(tk.t===TK.FOR){
-      p.next();const names=[p.expect(TK.NAME).v];
-      while(p.peek().t===TK.COMMA){p.next();names.push(p.expect(TK.NAME).v);}
-      const name=names[0];
-      if(p.peek().t===TK.ASSIGN){
-        p.next();
-        this.compileExpr(p);p.expect(TK.COMMA);this.compileExpr(p);
-        let step=false;if(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);step=true;}
-        if(!step)this.emit(OP.LOAD_K,this.addConst(1));
-        const stepSlot=this.nextLocal;this.pushLocal('__stp');this.emit(OP.STORE_VAR,stepSlot);
-        const limitSlot=this.nextLocal;this.pushLocal('__lim');this.emit(OP.STORE_VAR,limitSlot);
-        const indexSlot=this.nextLocal;this.pushLocal(name);this.emit(OP.STORE_VAR,indexSlot);
-        p.expect('do');
-        const top=this.here();
-        // Numeric-for semantics depend on the sign of the step.
-        this.emit(OP.LOAD_VAR,stepSlot);this.emit(OP.LOAD_K,this.addConst(0));this.emit(OP.LT);
-        const toDesc=this.emit(OP.JMP_TRUE,0);
-        this.emit(OP.LOAD_VAR,indexSlot);this.emit(OP.LOAD_VAR,limitSlot);this.emit(OP.LTE);
-        const ascFalse=this.emit(OP.JMP_FALSE,0);
-        const ascToBody=this.emit(OP.JMP,0);
-        const descLabel=this.here();this.patch(toDesc,1,descLabel);
-        this.emit(OP.LOAD_VAR,indexSlot);this.emit(OP.LOAD_VAR,limitSlot);this.emit(OP.GTE);
-        const descFalse=this.emit(OP.JMP_FALSE,0);
-        const body=this.here();
-        this.patch(ascToBody,1,body);
-        const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
-        this.depth++;while(!['end',TK.EOF].includes(p.peek().t))this.compileStat(p);this.popScope();this.depth--;
-        p.expect('end');
-        const inc=this.here();
-        for(const c of this.continues)this.patch(c,1,inc);
-        this.emit(OP.LOAD_VAR,indexSlot);this.emit(OP.LOAD_VAR,stepSlot);this.emit(OP.ADD);this.emit(OP.STORE_VAR,indexSlot);
-        this.emit(OP.JMP,top);
-        const end=this.here();
-        this.patch(ascFalse,1,end);this.patch(descFalse,1,end);
-        for(const b of this.breaks)this.patch(b,1,end);
-        this.breaks=sb;this.continues=sc;
-      } else {
-        p.expect('in');this.compileExpr(p);p.expect('do');
-        // Generic for: iterator expression yields (iter_fn, state, ctrl).
-        // Each iteration yields one value per loop variable; the first value
-        // becomes the control variable for the next iterator call.
-        const iS=this.nextLocal;
-        const lastCall=this.code[this.code.length-1];
-        if(lastCall&&[OP.CALL,OP.CALL_VAR].includes(lastCall[0]))lastCall[2]=3;
-        this.pushLocal('__iter');this.emit(OP.STORE_VAR,iS);
-        this.pushLocal('__state');this.emit(OP.STORE_VAR,iS+1);
-        this.pushLocal('__ctrl');this.emit(OP.STORE_VAR,iS+2);
-        for(let k=0;k<names.length;k++){this.pushLocal(names[k]);this.emit(OP.LOAD_NIL);this.emit(OP.STORE_VAR,iS+3+k);}
-        const top=this.here();
-        this.emit(OP.LOAD_VAR,iS);
-        this.emit(OP.LOAD_VAR,iS+1);
-        this.emit(OP.LOAD_VAR,iS+2);
-        this.emit(OP.CALL,2,names.length);
-        // First returned value is the iterator control value. Nil ends the loop.
-        this.emit(OP.DUP);this.emit(OP.LOAD_NIL);this.emit(OP.EQ);
-        const jt=this.emit(OP.JMP_TRUE,0);
-        // Store returned loop values in reverse so their stack order is preserved.
-        for(let k=names.length-1;k>=0;k--)this.emit(OP.STORE_VAR,iS+3+k);
-        this.emit(OP.LOAD_VAR,iS+3);this.emit(OP.STORE_VAR,iS+2);
-        const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
-        this.depth++;while(!['end',TK.EOF].includes(p.peek().t))this.compileStat(p);this.popScope();this.depth--;
-        p.expect('end');this.emit(OP.JMP,top);
-        const end=this.here();this.patch(jt,1,end);for(const b of this.breaks)this.patch(b,1,end);for(const c of this.continues)this.patch(c,1,top);this.breaks=sb;this.continues=sc;
-      }
-    }
-    else if(tk.t===TK.REPEAT){
-      p.next();const top=this.here();const sb=this.breaks,sc=this.continues;this.breaks=[];this.continues=[];
-      this.compileBlock(p);
-      const cond=this.here();
-      for(const c of this.continues)this.patch(c,1,cond);
-      p.expect('until');this.compileExpr(p);this.emit(OP.JMP_FALSE,top);
-      const end=this.here();for(const b of this.breaks)this.patch(b,1,end);this.breaks=sb;this.continues=sc;
-    }
-    else if(tk.t===TK.DO){p.next();this.compileBlock(p);p.expect('end');}
-    else if(tk.t===TK.RETURN){
-      p.next();let n=0;
-      if(![TK.EOF,'end','else','elseif','until'].includes(p.peek().t)){
-        this.compileExpr(p);n=1;
-        if(p.peek().t===TK.COMMA){while(p.peek().t===TK.COMMA){p.next();this.compileExpr(p);n++;}
-          const last=this.code[this.code.length-1];
-          if(last&&(last[0]===OP.CALL||last[0]===OP.CALL_VAR||last[0]===OP.VARARG)){
-            if(last[0]===OP.CALL||last[0]===OP.CALL_VAR)last[2]=-1;
-            else last[1]=-1;
-            n=-1;
-          }
-        } else {const last=this.code[this.code.length-1];if(last&&(last[0]===OP.CALL||last[0]===OP.CALL_VAR)){last[2]=-1;n=-1;}else if(last&&last[0]===OP.VARARG){last[1]=-1;n=-1;}}
-      }
-      this.emit(OP.RETURN,n);
-    }
-    else if(tk.t===TK.BREAK){p.next();const b=this.emit(OP.JMP,0);this.breaks.push(b);}
-    else if(tk.t===TK.CONTINUE){p.next();const c=this.emit(OP.JMP,0);this.continues.push(c);}
-    else{
-      if(p.peek().t===TK.NAME&&p.peekAt(1).t===TK.DOT&&p.peekAt(2).t===TK.NAME&&[TK.ADDASSIGN,TK.SUBASSIGN,TK.MULASSIGN,TK.DIVASSIGN,TK.MODASSIGN].includes(p.peekAt(3).t)){
-        const root=p.next().v;p.next();const field=p.next().v;const opTk=p.next().t;
-        const li=this.findLocal(root);
-        if(li>=0)this.emit(OP.LOAD_VAR,li);else this.emit(OP.LOAD_GLOBAL,this.addConst(root));
-        this.emit(OP.DUP);this.emit(OP.GET_FIELD,-1,this.addConst(field));
-        const bop={[TK.ADDASSIGN]:OP.ADD,[TK.SUBASSIGN]:OP.SUB,[TK.MULASSIGN]:OP.MUL,[TK.DIVASSIGN]:OP.DIV,[TK.MODASSIGN]:OP.MOD}[opTk];
-        this.compileExpr(p);this.emit(bop);this.emit(OP.SET_FIELD,-1,this.addConst(field));
-      }else this.compileExprStat(p);
-    }
+    return {t:'block',body};
   }
 
-  compileExprStat(p){
-    const assignOps=[TK.ASSIGN,TK.ADDASSIGN,TK.SUBASSIGN,TK.MULASSIGN,TK.DIVASSIGN,TK.MODASSIGN];
-    const bopMap={[TK.ADDASSIGN]:OP.ADD,[TK.SUBASSIGN]:OP.SUB,[TK.MULASSIGN]:OP.MUL,[TK.DIVASSIGN]:OP.DIV,[TK.MODASSIGN]:OP.MOD};
-    const emitName=name=>{
-      const li=this.findLocal(name);
-      if(li>=0)this.emit(OP.LOAD_VAR,li);
-      else {const up=this.resolveUpvalue(name);if(up)this.emit(OP.LOAD_UPVALUE,up.depth,up.slot);else this.emit(OP.LOAD_GLOBAL,this.addConst(name));}
-    };
-
-    // Multiple assignment: a, b, c = ...
-    if(p.peek().t===TK.NAME&&p.peekAt(1).t===TK.COMMA){
-      const targets=[];
-      while(true){
-        const name=p.expect(TK.NAME).v;
-        const li=this.findLocal(name);
-        if(li>=0)targets.push({kind:"local",idx:li});
-        else {const up=this.resolveUpvalue(name);if(up)targets.push({kind:"up",depth:up.depth,idx:up.slot});else targets.push({kind:"global",idx:this.addConst(name)});}
-        if(p.peek().t!==TK.COMMA)break;
-        p.next();
-      }
-      p.expect(TK.ASSIGN);
-      const rhs=[];
-      while(true){
-        this.compileExpr(p);rhs.push(this.code[this.code.length-1]);
-        if(p.peek().t!==TK.COMMA)break;
-        p.next();
-      }
-      const last=rhs[rhs.length-1];
-      const spread=(last&&last[0]===OP.CALL&&p.peek().t!==TK.COMMA)?Math.max(1,targets.length-rhs.length+1):1;
-      if(last&&last[0]===OP.CALL&&p.peek().t!==TK.COMMA)last[2]=spread;
-      const produced=rhs.length-1+spread;
-      for(let i=produced;i>targets.length;i--)this.emit(OP.POP);
-      for(let i=produced;i<targets.length;i++)this.emit(OP.LOAD_NIL);
-      for(let i=targets.length-1;i>=0;i--){
-        const t=targets[i];
-        if(t.kind==="local")this.emit(OP.STORE_VAR,t.idx);
-        else if(t.kind==="up")this.emit(OP.STORE_UPVALUE,t.depth,t.idx);
-        else this.emit(OP.STORE_GLOBAL,t.idx);
-      }
-      return;
+  function parseStat(){
+    const tk=peek();
+    if(tk.t==='local'){
+      next();
+      if(check('function')){next();const name=eat('NAME').v;const fn=parseFuncBody(false);return {t:'localfunc',name,fn};}
+      // type alias: 'local type X = ...' skip
+      if(check('type')&&peek(1).t==='NAME'&&peek(2).t==='='){next();next();next();skipTypeExpr();return null;}
+      const names=[eat('NAME').v];skipOptType();
+      while(match(',')){names.push(eat('NAME').v);skipOptType();}
+      let vals=[];if(match('=')){vals.push(parseExpr());while(match(','))vals.push(parseExpr());}
+      return {t:'local',names,vals};
     }
-
-    // Safe dotted member assignment, including Roblox Instance properties and self.x.
-    if(p.peek().t===TK.NAME){
-      const parts=[p.peek().v];
-      let k=1;
-      while(p.peekAt(k).t===TK.DOT&&p.peekAt(k+1).t===TK.NAME){parts.push(p.peekAt(k+1).v);k+=2;}
-      const opTk=p.peekAt(k).t;
-      if(parts.length>1&&assignOps.includes(opTk)){
-        p.next();
-        for(let i=1;i<parts.length;i++){p.next();p.expect(TK.NAME);}
-        emitName(parts[0]);
-        for(let i=1;i<parts.length-1;i++)this.emit(OP.GET_FIELD,-1,this.addConst(parts[i]));
-        p.expect(opTk);
-        if(opTk===TK.ASSIGN){
-          this.compileExpr(p);this.emit(OP.SET_FIELD,-1,this.addConst(parts[parts.length-1]));this.emit(OP.POP);
-        }else{
-          this.emit(OP.DUP);this.emit(OP.GET_FIELD,-1,this.addConst(parts[parts.length-1]));
-          this.compileExpr(p);this.emit(bopMap[opTk]);
-          this.emit(OP.SET_FIELD,-1,this.addConst(parts[parts.length-1]));this.emit(OP.POP);
-        }
-        return;
-      }
-
-      // Safe indexed assignment: t[k] = v / t[k] += v.
-      if(p.peekAt(1).t===TK.LBRACKET){
-        let d=0,j=1;
-        for(;p.peekAt(j).t!==TK.EOF;j++){
-          const tt=p.peekAt(j).t;
-          if(tt===TK.LBRACKET)d++;
-          else if(tt===TK.RBRACKET){d--;if(d===0)break;}
-        }
-        const op=p.peekAt(j+1).t;
-        if(assignOps.includes(op)){
-          const root=p.next().v;p.expect(TK.LBRACKET);emitName(root);this.compileExpr(p);p.expect(TK.RBRACKET);p.expect(op);
-          if(op===TK.ASSIGN){this.compileExpr(p);this.emit(OP.SET_INDEX,-1,-1);this.emit(OP.POP);}
-          else{
-            // Indexed compound assignment uses a dedicated DUP2 arrangement.
-            this.emit(OP.DUP2);this.emit(OP.GET_INDEX);
-            this.compileExpr(p);this.emit(bopMap[op]);this.emit(OP.SET_INDEX,-1,-1);this.emit(OP.POP);
-          }
-          return;
-        }
-      }
+    if(tk.t==='type'&&peek(1).t==='NAME'&&peek(2).t==='='){next();next();next();skipTypeExpr();return null;}
+    if(tk.t==='function'){
+      next();let chain=[eat('NAME').v];let method=false;
+      while(check('.'))next(),chain.push(eat('NAME').v);
+      if(check(':'))next(),chain.push(eat('NAME').v),method=true;
+      return {t:'funcstat',chain,method,fn:parseFuncBody(method)};
     }
-
-    this.compileExpr(p);
-    if(assignOps.includes(p.peek().t)){
-      const opTk=p.next().t;
-      const last=this.code[this.code.length-1];
-      if(opTk===TK.ASSIGN){
-        this.code.pop();this.compileExpr(p);
-        if(last[0]===OP.LOAD_VAR)this.emit(OP.STORE_VAR,last[1]);
-        else if(last[0]===OP.LOAD_UPVALUE)this.emit(OP.STORE_UPVALUE,last[1],last[2]);
-        else if(last[0]===OP.LOAD_GLOBAL)this.emit(OP.STORE_GLOBAL,last[1]);
-        else this.emit(OP.POP);
-      }else{
-        const bop=bopMap[opTk];this.compileExpr(p);this.emit(bop);
-        if(last[0]===OP.LOAD_VAR)this.emit(OP.STORE_VAR,last[1]);
-        else if(last[0]===OP.LOAD_UPVALUE)this.emit(OP.STORE_UPVALUE,last[1],last[2]);
-        else if(last[0]===OP.LOAD_GLOBAL)this.emit(OP.STORE_GLOBAL,last[1]);
-        else this.emit(OP.POP);
-      }
-    }else{
-      const last=this.code[this.code.length-1];
-      if(last)this.emit(OP.POP);
+    if(tk.t==='if'){next();return parseIf();}
+    if(tk.t==='while'){next();const cond=parseExpr();eat('do');const body=parseBlock();eat('end');return {t:'while',cond,body};}
+    if(tk.t==='repeat'){next();const body=parseBlock();eat('until');const cond=parseExpr();return {t:'repeat',body,cond};}
+    if(tk.t==='do'){next();const body=parseBlock();eat('end');return {t:'do',body};}
+    if(tk.t==='for'){next();return parseFor();}
+    if(tk.t==='return'){
+      next();const vals=[];
+      const RS=new Set(['end','else','elseif','until','EOF',';']);
+      if(!RS.has(peek().t)){vals.push(parseExpr());while(match(','))vals.push(parseExpr());}
+      match(';');return {t:'return',vals};
     }
-  }
-  skipTypeExpr(p){
-    if(p.peek().t!==TK.LBRACE){p.next();return;}
-    let d=0;
-    do{
-      const t=p.next().t;
-      if(t===TK.LBRACE)d++;
-      else if(t===TK.RBRACE)d--;
-    }while(d>0&&p.peek().t!==TK.EOF);
+    if(tk.t==='break'){next();return {t:'break'};}
+    if(tk.t==='continue'){next();return {t:'continue'};}
+    if(tk.t==='::'){next();const lbl=eat('NAME').v;eat('::');return {t:'label',name:lbl};}
+    if(tk.t==='goto'){next();return {t:'goto',name:eat('NAME').v};}
+    return parseExprStat();
   }
 
-  compileFunction(p,method=false){
-    p.expect(TK.LPAREN);const params=[];let vararg=false;if(method)params.push('self');
-    while(p.peek().t!==TK.RPAREN&&p.peek().t!==TK.EOF){
-      if(p.peek().t===TK.DOTDOTDOT){p.next();vararg=true;break;}
-      params.push(p.expect(TK.NAME).v);if(p.peek().t===TK.COLON){p.next();if(p.peek().t===TK.LBRACE){this.skipTypeExpr(p);}else p.next();}if(p.peek().t===TK.COMMA)p.next();
-    }
-    p.expect(TK.RPAREN);if(p.peek().t===TK.COLON){p.next();if(p.peek().t===TK.LBRACE){this.skipTypeExpr(p);}else p.next();}
-    const sub=new Compiler(this);sub.depth=1;
-    for(const pn of params)sub.pushLocal(pn);
-    sub.compileBlock(p);if(p.peek().t==='end')p.next();
-    if(!sub.code.length||sub.code[sub.code.length-1][0]!==OP.RETURN)sub.emit(OP.RETURN,0);
-    const pi=this.protos.length;
-    this.protos.push({code:sub.code,consts:sub.consts,protos:sub.protos,params:params.length,vararg});
-    this.emit(OP.MAKE_CLOSURE,pi);
+  function parseIf(){
+    const cond=parseExpr();eat('then');const body=parseBlock();
+    const elseifs=[];
+    while(check('elseif')){next();const c=parseExpr();eat('then');const b=parseBlock();elseifs.push({cond:c,body:b});}
+    let els=null;if(match('else'))els=parseBlock();
+    eat('end');return {t:'if',cond,body,elseifs,els};
   }
 
-  compileExpr(p){this.compileOr(p);}
-  compileOr(p){
-    this.compileAnd(p);
-    while(p.peek().t==='or'){
-      p.next();
-      this.emit(OP.DUP);
-      const jt=this.emit(OP.JMP_TRUE,0);
-      this.emit(OP.POP);
-      this.compileAnd(p);
-      this.patch(jt,1,this.here());
+  function parseFor(){
+    const name=eat('NAME').v;skipOptType();
+    if(match('=')){
+      const start=parseExpr();eat(',');const limit=parseExpr();
+      let step=null;if(match(','))step=parseExpr();
+      eat('do');const body=parseBlock();eat('end');
+      return {t:'fornum',name,start,limit,step,body};
     }
+    // generic for: collect all names before 'in'
+    const names=[name];skipOptType();
+    while(check(',')&&peek(1).t!=='in'){next();names.push(eat('NAME').v);skipOptType();}
+    if(check(','))next(); // trailing comma
+    eat('in');
+    const iters=[parseExpr()];while(match(','))iters.push(parseExpr());
+    eat('do');const body=parseBlock();eat('end');
+    return {t:'forgen',names,iters,body};
   }
-  compileAnd(p){
-    this.compileCompare(p);
-    while(p.peek().t==='and'){
-      p.next();
-      this.emit(OP.DUP);
-      const jf=this.emit(OP.JMP_FALSE,0);
-      this.emit(OP.POP);
-      this.compileCompare(p);
-      this.patch(jf,1,this.here());
-    }
+
+  function skipOptType(){
+    if(check(':')&&peek(1).t!=='::')next(),skipTypeExpr();
   }
-  compileCompare(p){
-    this.compileConcat(p);
-    const m={[TK.EQ]:OP.EQ,[TK.NEQ]:OP.NEQ,[TK.LT]:OP.LT,[TK.LTE]:OP.LTE,[TK.GT]:OP.GT,[TK.GTE]:OP.GTE};
-    while(m[p.peek().t]!==undefined){const op=m[p.next().t];this.compileConcat(p);this.emit(op);}
-  }
-  compileConcat(p){this.compileAdd(p);if(p.peek().t===TK.DOTDOT){p.next();this.compileConcat(p);this.emit(OP.CONCAT);}}
-  compileAdd(p){this.compileMul(p);while(p.peek().t===TK.PLUS||p.peek().t===TK.MINUS){const op=p.next().t===TK.PLUS?OP.ADD:OP.SUB;this.compileMul(p);this.emit(op);}}
-  compileMul(p){
-    this.compileUnary(p);
-    while([TK.STAR,TK.SLASH,TK.PERCENT].includes(p.peek().t)){
-      const t=p.next().t;this.compileUnary(p);this.emit(t===TK.STAR?OP.MUL:t===TK.SLASH?OP.DIV:OP.MOD);
-    }
-  }
-  compileUnary(p){
-    if(p.peek().t===TK.MINUS){p.next();this.compilePower(p);this.emit(OP.UNM);}
-    else if(p.peek().t==='not'){p.next();this.compilePower(p);this.emit(OP.NOT);}
-    else if(p.peek().t===TK.HASH){p.next();this.compilePower(p);this.emit(OP.LEN);}
-    else this.compilePower(p);
-  }
-  compilePower(p){this.compilePostfix(p);if(p.peek().t===TK.CARET){p.next();this.compileUnary(p);this.emit(OP.POW);}}
-  compilePostfix(p){
-    this.compilePrimary(p);
+
+  function skipTypeExpr(){
+    let depth=0;
+    const STMT_KW=new Set(['local','function','if','while','for','repeat','do',
+      'return','break','continue','end','else','elseif','until','then','EOF']);
     while(true){
-      if(p.peek().t===TK.DOT){p.next();const k=p.expect(TK.NAME).v;this.emit(OP.GET_FIELD,-1,this.addConst(k));}
-      else if(p.peek().t===TK.LBRACKET){p.next();this.compileExpr(p);p.expect(TK.RBRACKET);this.emit(OP.GET_INDEX);}
-      else if(p.peek().t===TK.COLON){p.next();const m=p.expect(TK.NAME).v;this.emit(OP.DUP);this.emit(OP.GET_FIELD,-1,this.addConst(m));this.emit(OP.SWAP);const ac=this.compileArgs(p,true);if(ac<0)this.emit(OP.CALL_VAR,-ac-1,1);else this.emit(OP.CALL,ac,1);}
-      else if([TK.LPAREN,TK.LBRACE,TK.STR].includes(p.peek().t)){const ac=this.compileArgs(p,false);if(ac<0)this.emit(OP.CALL_VAR,-ac-1,1);else this.emit(OP.CALL,ac,1);}
+      const t=peek().t;
+      if(t==='EOF')break;
+      if(t==='{'||t==='('||t==='<'){depth++;next();continue;}
+      if(t==='}'||t===')'||t==='>'){if(depth<=0)break;depth--;next();continue;}
+      if(depth===0){
+        if(STMT_KW.has(t))break;
+        const STOP2=new Set(['=','then','do',')','EOF','end','else','elseif',
+          'until','==','~=','{','[','::']);
+        if(STOP2.has(t))break;
+      }
+      next();
+    }
+  }
+
+  function parseFuncBody(isMethod){
+    eat('(');const params=[];let vararg=false;
+    if(isMethod)params.push('self');
+    if(!check(')')){
+      if(check('...')){next();vararg=true;}
+      else{
+        params.push(eat('NAME').v);skipOptType();
+        while(match(',')&&!check('...')){
+          if(check('...')){next();vararg=true;break;}
+          params.push(eat('NAME').v);skipOptType();
+        }
+        if(check(',')&&check('...')){next();next();vararg=true;}
+      }
+    }
+    eat(')');
+    // skip return type
+    if(check('->'))next(),skipTypeExpr();
+    else if(check(':')&&peek(1).t!=='::')next(),skipTypeExpr();
+    const body=parseBlock();eat('end');
+    return {t:'func',params,vararg,body};
+  }
+
+  function parseExprStat(){
+    const expr=parseSuffixed();
+    const ASSIGNS=new Set(['=','+=','-=','*=','/=','%=','..=']);
+    if(ASSIGNS.has(peek().t)||check(',')){
+      const targets=[expr];
+      while(match(','))targets.push(parseSuffixed());
+      const op=next().t;
+      const vals=[parseExpr()];while(match(','))vals.push(parseExpr());
+      return {t:'assign',op,targets,vals};
+    }
+    if(expr.t!=='call'&&expr.t!=='methodcall')throw new Error('Expected call or assign, got '+expr.t);
+    return {t:'callstat',expr};
+  }
+
+  function parseExpr(){return parseOr();}
+  function parseOr(){
+    let l=parseAnd();
+    while(check('or')){const op=next().t;l={t:'binop',op,left:l,right:parseAnd()};}
+    return l;
+  }
+  function parseAnd(){
+    let l=parseCmp();
+    while(check('and')){const op=next().t;l={t:'binop',op,left:l,right:parseCmp()};}
+    return l;
+  }
+  function parseCmp(){
+    let l=parseBor();
+    while(['<','>','<=','>=','==','~='].includes(peek().t)){const op=next().t;l={t:'binop',op,left:l,right:parseBor()};}
+    return l;
+  }
+  function parseBor(){
+    let l=parseBxor();
+    while(check('|')){next();l={t:'binop',op:'|',left:l,right:parseBxor()};}
+    return l;
+  }
+  function parseBxor(){
+    let l=parseBand();
+    while(check('~')&&peek(1).t!=='='){next();l={t:'binop',op:'~',left:l,right:parseBand()};}
+    return l;
+  }
+  function parseBand(){
+    let l=parseShl();
+    while(check('&')){next();l={t:'binop',op:'&',left:l,right:parseShl()};}
+    return l;
+  }
+  function parseShl(){
+    let l=parseConcat();
+    while(['<<','>>'].includes(peek().t)){const op=next().t;l={t:'binop',op,left:l,right:parseConcat()};}
+    return l;
+  }
+  function parseConcat(){
+    const l=parseAdd();
+    if(check('..')){next();return {t:'binop',op:'..',left:l,right:parseConcat()};}
+    return l;
+  }
+  function parseAdd(){
+    let l=parseMul();
+    while(['+','-'].includes(peek().t)){const op=next().t;l={t:'binop',op,left:l,right:parseMul()};}
+    return l;
+  }
+  function parseMul(){
+    let l=parseUnary();
+    while(['*','/','//','%'].includes(peek().t)){const op=next().t;l={t:'binop',op,left:l,right:parseUnary()};}
+    return l;
+  }
+  function parseUnary(){
+    if(check('not')){next();return {t:'unop',op:'not',operand:parseUnary()};}
+    if(check('#')){next();return {t:'unop',op:'#',operand:parseUnary()};}
+    if(check('-')&&peek(1).t!=='->'){next();return {t:'unop',op:'-',operand:parseUnary()};}
+    if(check('~')&&peek(1).t!=='='){next();return {t:'unop',op:'~',operand:parseUnary()};}
+    return parsePow();
+  }
+  function parsePow(){
+    const b=parseSuffixed();
+    if(check('^')){next();return {t:'binop',op:'^',left:b,right:parseUnary()};}
+    return b;
+  }
+
+  function parseSuffixed(){
+    let e=parsePrimary();
+    while(true){
+      if(check('.')&&peek(1).t==='NAME'){next();e={t:'field',obj:e,field:next().v};}
+      else if(check('[')&&peek(1).t!=='['){next();const k=parseExpr();eat(']');e={t:'index',obj:e,key:k};}
+      else if(check(':')&&peek(1).t==='NAME'&&peek(2).t!=='='){
+        next();const m=next().v;const args=parseArgs();e={t:'methodcall',obj:e,method:m,args};
+      }
+      else if(check('(')||check('{')||check('STR')){
+        e={t:'call',fn:e,args:parseArgs()};
+      }
       else break;
     }
+    return e;
   }
-  compileArgs(p,hasSelf){
-    let ac=hasSelf?1:0,hasVararg=false;
-    if(p.peek().t===TK.LPAREN){
-      p.next();
-      while(p.peek().t!==TK.RPAREN&&p.peek().t!==TK.EOF){
-        if(p.peek().t===TK.DOTDOTDOT){p.next();hasVararg=true;break;}
-        this.compileExpr(p);ac++;
-        if(p.peek().t===TK.COMMA)p.next();
-      }
-      p.expect(TK.RPAREN);
-    } else if(p.peek().t===TK.LBRACE){this.compileTable(p);ac++;}
-    else if(p.peek().t===TK.STR){this.emit(OP.LOAD_K,this.addConst(p.next().v));ac++;}
-    return hasVararg?-(ac+1):ac;
-  }
-  compilePrimary(p){
-    const tk=p.peek();
-    if(tk.t===TK.NUM){p.next();this.emit(OP.LOAD_K,this.addConst(tk.v));}
-    else if(tk.t===TK.STR){p.next();this.emit(OP.LOAD_K,this.addConst(tk.v));}
-    else if(tk.t==='true'){p.next();this.emit(OP.LOAD_BOOL,1);}
-    else if(tk.t==='false'){p.next();this.emit(OP.LOAD_BOOL,0);}
-    else if(tk.t==='nil'){p.next();this.emit(OP.LOAD_NIL);}
-    else if(tk.t===TK.DOTDOTDOT){p.next();this.emit(OP.VARARG,-1);}
-    else if(tk.t===TK.FUNCTION){p.next();this.compileFunction(p);}
-    else if(tk.t===TK.LBRACE){this.compileTable(p);}
-    else if(tk.t===TK.LPAREN){p.next();this.compileExpr(p);p.expect(TK.RPAREN);}
-    else if(tk.t===TK.NAME){p.next();const li=this.findLocal(tk.v);if(li>=0)this.emit(OP.LOAD_VAR,li);else {const up=this.resolveUpvalue(tk.v);if(up)this.emit(OP.LOAD_UPVALUE,up.depth,up.slot);else this.emit(OP.LOAD_GLOBAL,this.addConst(tk.v));}}
-    else throw new Error('Unexpected token: '+tk.t+'('+tk.v+')');
-  }
-  compileTable(p){
-    p.expect(TK.LBRACE);this.emit(OP.NEW_TABLE);let idx=1;
-    while(p.peek().t!==TK.RBRACE&&p.peek().t!==TK.EOF){
-      if(p.peek().t===TK.LBRACKET){p.next();this.compileExpr(p);p.expect(TK.RBRACKET);p.expect(TK.ASSIGN);this.compileExpr(p);this.emit(OP.SET_INDEX,-1,-1);}
-      else if(p.peek().t===TK.NAME&&p.peekAt(1).t===TK.ASSIGN){const k=p.next().v;p.next();this.compileExpr(p);this.emit(OP.SET_FIELD,-1,this.addConst(k));}
-      else{this.compileExpr(p);this.emit(OP.SET_INDEX,-1,idx++);}
-      if(p.peek().t===TK.COMMA||p.peek().t===TK.SEMI)p.next();
+
+  function parseArgs(){
+    if(check('(')){
+      next();const args=[];
+      if(!check(')')){args.push(parseExpr());while(match(','))args.push(parseExpr());}
+      eat(')');return args;
     }
-    p.expect(TK.RBRACE);
+    if(check('{')){return [parseTable()];}
+    if(check('STR')){return [{t:'str',v:next().v}];}
+    throw new Error('Expected args');
   }
-}
-class Parser{constructor(t){this.toks=t;this.i=0;}peek(){return this.toks[this.i];}peekAt(n){return this.toks[this.i+n]||{t:TK.EOF,v:null};}next(){return this.toks[this.i++];}expect(t){const tk=this.next();if(tk.t!==t)throw new Error('Expected '+t+' got '+tk.t+'('+tk.v+')');return tk;}}
 
-// ══════════════════════════════════════════════════════════════════════════════
-// SERIALIZE + REAL STACK VM
-// ══════════════════════════════════════════════════════════════════════════════
-function serializeProto(p){
-  const out=[];
-  out.push(p.consts.length);
-  for(const c of p.consts){
-    if(c===null||c===undefined){out.push(3);}
-    else if(typeof c==='boolean'){out.push(2,c?1:0);}
-    else if(typeof c==='number'){
-      const str=String(c);out.push(0,str.length);for(let i=0;i<str.length;i++)out.push(str.charCodeAt(i));
-    } else {
-      const str=String(c);out.push(1,str.length);for(let i=0;i<str.length;i++)out.push(str.charCodeAt(i));
-    }
+  function parsePrimary(){
+    const tk=peek();
+    if(tk.t==='NAME'){next();return {t:'name',v:tk.v};}
+    if(tk.t==='('){next();const e=parseExpr();eat(')');return {t:'paren',expr:e};}
+    // literals
+    if(tk.t==='NUM'){next();return {t:'num',v:tk.v};}
+    if(tk.t==='STR'){next();return {t:'str',v:tk.v};}
+    if(tk.t==='true'){next();return {t:'bool',v:true};}
+    if(tk.t==='false'){next();return {t:'bool',v:false};}
+    if(tk.t==='nil'){next();return {t:'nil'};}
+    if(tk.t==='...'){next();return {t:'vararg'};}
+    if(tk.t==='function'){next();return parseFuncBody(false);}
+    if(tk.t==='{'){return parseTable();}
+    throw new Error('Unexpected token: '+tk.t+' ('+tk.v+') at pos '+pos);
   }
-  out.push(p.code.length);
-  for(const ins of p.code){out.push(ins.length);for(const v of ins)out.push(v==null?0:v);}
-  out.push(p.protos.length);
-  for(const s of p.protos)out.push(...serializeProto(s));
-  out.push(p.params||0,p.vararg?1:0);
-  return out;
-}
 
-function compile(src){
-  const toks=lex(src);const p=new Parser(toks);const c=new Compiler();
-  c.compileBlock(p);
-  if(!c.code.length||c.code[c.code.length-1][0]!==OP.RETURN)c.emit(OP.RETURN,0);
-  return serializeProto({code:c.code,consts:c.consts,protos:c.protos,params:0,vararg:true});
-}
-
-function rndI(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
-const IDS=['l','I','1','O','0'];
-function id(n){n=n||rndI(7,13);let s='_';for(let i=0;i<n;i++)s+=IDS[rndI(0,4)];return s;}
-function luaEsc(s){return s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/\t/g,'\\t');}
-
-function emitVMLua(bc){
-  const seed=rndI(1,250);
-  const enc=[];
-  for(let i=0;i<bc.length;i++){
-    let x=bc[i];
-    const zz=x<0?(-x*2-1):x*2;
-    let v=zz;
-    while(v>=128){enc.push((v%128)|128);v=Math.floor(v/128);}
-    enc.push(v);
-  }
-  for(let i=0;i<enc.length;i++)enc[i]=(enc[i]^((seed+i*17)%251))&255;
-
-  const vmN=id(10),DE=id(3),EX=id(3),bcN=id(4),sdN=id(4),iN=id(3),posN=id(4);
-  const frameN=id(4),stk=id(4),sp=id(3),pcN=id(3),codeN=id(4),KN=id(3),ins=id(3),opN=id(3);
-  const bN=id(3),vN=id(3),tN=id(3),kN=id(3),aN=id(3),fnN=id(3),argsN=id(4),resN=id(4),nretN=id(3),outN=id(4);
-  const cN=id(3),tmpN=id(3),pN=id(3),jN=id(3),sN=id(3),readN=id(3),zzN=id(3),unpackN=id(3),explicitN=id(3),totalN=id(3),outerN=id(4),envN=id(4),rN=id(3);
-
-  return `local ${sdN}=${seed};local ${bcN}={${enc.join(',')}};for ${iN}=1,#${bcN} do ${bcN}[${iN}]=(${bcN}[${iN}])~(((${sdN}+(${iN}-1)*17)%251)) end
-local ${unpackN}=table.unpack or unpack
-local function ${readN}(${bcN},${posN})
- local ${zzN}=0;local ${sN}=0
- while true do
-  local ${vN}=${bcN}[${posN}] or 0;${posN}=${posN}+1;${zzN}=${zzN}+(${vN}%128)*(2^${sN});
-  if ${vN}<128 then break end;${sN}=${sN}+7
- end
- if ${zzN}%2==1 then return -(${zzN}+1)/2,${posN} end
- return ${zzN}/2,${posN}
-end
-local function ${DE}(${bcN},${posN})
- local ${pN}={consts={},code={},protos={},params=0,vararg=false};local ${cN};${cN},${posN}=${readN}(${bcN},${posN})
- for ${iN}=1,${cN} do local ${tN};${tN},${posN}=${readN}(${bcN},${posN})
-  if ${tN}==3 then ${pN}.consts[${iN}]=nil
-  elseif ${tN}==2 then local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${pN}.consts[${iN}]=${vN}==1
-  else local ${sN};${sN},${posN}=${readN}(${bcN},${posN});local ${bN}={};for ${jN}=1,${sN} do local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${bN}[${jN}]=string.char(${vN}) end;local ${vN}=table.concat(${bN});${pN}.consts[${iN}]=(${tN}==0 and tonumber(${vN}) or ${vN}) end
- end
- ${cN},${posN}=${readN}(${bcN},${posN});for ${iN}=1,${cN} do local ${sN};${sN},${posN}=${readN}(${bcN},${posN});local ${bN}={};for ${jN}=1,${sN} do local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${bN}[${jN}]=${vN} end;${pN}.code[${iN}]={${unpackN}(${bN})} end
- ${cN},${posN}=${readN}(${bcN},${posN});for ${iN}=1,${cN} do local ${vN};${vN},${posN}=${DE}(${bcN},${posN});${pN}.protos[${iN}]=${vN} end
- ${pN}.params,${posN}=${readN}(${bcN},${posN});local ${vN};${vN},${posN}=${readN}(${bcN},${posN});${pN}.vararg=${vN}==1;return ${pN},${posN}
-end
-local function ${EX}(${pN},${frameN},${argsN})
- local ${stk}={};local ${sp}=0;local ${pcN}=1;local ${codeN}=${pN}.code;local ${KN}=${pN}.consts;local ${resN}={};local ${nretN}=0
- local function push(v) ${sp}=${sp}+1;${stk}[${sp}]=v end
- local function pop() local v=${stk}[${sp}];${stk}[${sp}]=nil;${sp}=${sp}-1;return v end
- local function walk(d) local f=${frameN};for ${jN}=1,d do f=f.outer end;return f end
- for ${iN}=1,${pN}.params do ${frameN}.loc[${iN}]=(${argsN} or {})[${iN}] end
- while ${pcN}<=#${codeN} do
-  local ${ins}=${codeN}[${pcN}];local ${opN}=${ins}[1];${pcN}=${pcN}+1
-  if ${opN}==0 then push(${KN}[${ins}[2]+1])
-  elseif ${opN}==1 then push(nil)
-  elseif ${opN}==2 then push(${ins}[2]==1)
-  elseif ${opN}==3 then push(${frameN}.loc[${ins}[2]+1])
-  elseif ${opN}==4 then ${frameN}.loc[${ins}[2]+1]=pop()
-  elseif ${opN}==5 then push(${frameN}.env[${KN}[${ins}[2]+1]])
-  elseif ${opN}==6 then ${frameN}.env[${KN}[${ins}[2]+1]]=pop()
-  elseif ${opN}==7 then local ${tmpN}=walk(${ins}[2]);push(${tmpN}.loc[${ins}[3]+1])
-  elseif ${opN}==8 then local ${tmpN}=walk(${ins}[2]);${tmpN}.loc[${ins}[3]+1]=pop()
-  elseif ${opN}==10 then local ${bN}=pop();local ${aN}=pop();push(${aN}+${bN})
-  elseif ${opN}==11 then local ${bN}=pop();local ${aN}=pop();push(${aN}-${bN})
-  elseif ${opN}==12 then local ${bN}=pop();local ${aN}=pop();push(${aN}*${bN})
-  elseif ${opN}==13 then local ${bN}=pop();local ${aN}=pop();push(${aN}/${bN})
-  elseif ${opN}==14 then local ${bN}=pop();local ${aN}=pop();push(${aN}%${bN})
-  elseif ${opN}==15 then local ${bN}=pop();local ${aN}=pop();push(${aN}^${bN})
-  elseif ${opN}==16 then push(-pop())
-  elseif ${opN}==17 then local ${bN}=pop();local ${aN}=pop();push(tostring(${aN})..tostring(${bN}))
-  elseif ${opN}==18 then push(#pop())
-  elseif ${opN}==20 then local ${bN}=pop();local ${aN}=pop();push(${aN}==${bN})
-  elseif ${opN}==21 then local ${bN}=pop();local ${aN}=pop();push(${aN}~=${bN})
-  elseif ${opN}==22 then local ${bN}=pop();local ${aN}=pop();push(${aN}<${bN})
-  elseif ${opN}==23 then local ${bN}=pop();local ${aN}=pop();push(${aN}<=${bN})
-  elseif ${opN}==24 then local ${bN}=pop();local ${aN}=pop();push(${aN}>${bN})
-  elseif ${opN}==25 then local ${bN}=pop();local ${aN}=pop();push(${aN}>=${bN})
-  elseif ${opN}==26 then push(not pop())
-  elseif ${opN}==27 then local ${bN}=pop();local ${aN}=pop();push(${aN} and ${bN})
-  elseif ${opN}==28 then local ${bN}=pop();local ${aN}=pop();push(${aN} or ${bN})
-  elseif ${opN}==30 then ${pcN}=${ins}[2]+1
-  elseif ${opN}==31 then if not pop() then ${pcN}=${ins}[2]+1 end
-  elseif ${opN}==32 then if pop() then ${pcN}=${ins}[2]+1 end
-  elseif ${opN}==40 then push({})
-  elseif ${opN}==41 then local ${vN}=pop();local ${tN}=${stk}[${sp}];${tN}[${KN}[${ins}[3]+1]]=${vN}
-  elseif ${opN}==42 then local ${tN}=pop();push(${tN}[${KN}[${ins}[3]+1]])
-  elseif ${opN}==43 then local ${vN}=pop();local ${kN}=pop();local ${tN}=${stk}[${sp}];${tN}[${kN}]=${vN}
-  elseif ${opN}==44 then local ${kN}=pop();local ${tN}=pop();push(${tN}[${kN}])
-  elseif ${opN}==50 then local ${fnN}=${pN}.protos[${ins}[2]+1];local ${outerN}=${frameN};local ${envN}=${frameN}.env;push(function(...) local ${aN}={...};local ${rN}=${EX}(${fnN},{loc={},outer=${outerN},env=${envN},args=${aN}},${aN});return ${unpackN}(${rN}.v,1,${rN}.n) end)
-  elseif ${opN}==51 then local ${aN}={};for ${jN}=${ins}[2],1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}=table.pack(${fnN}(${unpackN}(${aN})))
-   local ${cN}=${outN}.n or #${outN};if ${ins}[3]==-1 then for ${jN}=1,${cN} do push(${outN}[${jN}]) end else for ${jN}=1,${ins}[3] do push(${outN}[${jN}]) end end
-  elseif ${opN}==52 then ${nretN}=${ins}[2];if ${nretN}<0 then ${nretN}=${sp} end;for ${jN}=${nretN},1,-1 do ${resN}[${jN}]=pop() end;return{n=${nretN},v=${resN}}
-  elseif ${opN}==53 then local ${explicitN}=${ins}[2];local ${totalN}=#(${frameN}.args or {})-${pN}.params;if ${explicitN} and ${explicitN}>=0 then ${totalN}=math.min(${totalN},${explicitN}) end;for ${jN}=1,${totalN} do push((${frameN}.args or {})[${pN}.params+${jN}]) end
-  elseif ${opN}==60 then pop()
-  elseif ${opN}==61 then push(${stk}[${sp}])
-  elseif ${opN}==62 then local ${aN}=pop();local ${bN}=pop();push(${aN});push(${bN})
-  elseif ${opN}==63 then local ${bN}=pop();local ${aN}=pop();push(math.floor(${aN}/${bN}))
-  elseif ${opN}==64 then local ${bN}=pop();local ${aN}=pop();push(bit32.band(${aN},${bN}))
-  elseif ${opN}==65 then local ${bN}=pop();local ${aN}=pop();push(bit32.bor(${aN},${bN}))
-  elseif ${opN}==66 then local ${bN}=pop();local ${aN}=pop();push(bit32.bxor(${aN},${bN}))
-  elseif ${opN}==67 then push(bit32.bnot(pop()))
-  elseif ${opN}==68 then local ${bN}=pop();local ${aN}=pop();push(bit32.lshift(${aN},${bN}))
-  elseif ${opN}==69 then local ${bN}=pop();local ${aN}=pop();push(bit32.rshift(${aN},${bN}))
-  elseif ${opN}==70 then local ${explicitN}=${ins}[2];local ${totalN}=${explicitN}+#(${frameN}.args or {});local ${aN}={};for ${jN}=${totalN},1,-1 do ${aN}[${jN}]=pop() end;local ${fnN}=pop();local ${outN}=table.pack(${fnN}(${unpackN}(${aN})))
-   local ${cN}=${outN}.n or #${outN};local ${nretN}=${ins}[3] or -1;if ${nretN}<0 then ${nretN}=${cN} end;for ${jN}=1,${nretN} do push(${outN}[${jN}]) end
-  elseif ${opN}==71 then local ${aN}=pop();local ${bN}=pop();push(${bN});push(${aN});push(${bN});push(${aN}) end
- end
- return{n=0,v={}}
-end
-local ${pN},${posN}=${DE}(${bcN},1);${EX}(${pN},{loc={},outer=nil,env=_G,args={}},{} )`;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// V4 WRAPPING LAYERS (applied after VM emit)
-// ══════════════════════════════════════════════════════════════════════════════
-function L_var(code){
-  // Safe identifier mangling.
-  // VM output already uses randomized identifiers, so worker.js skips this
-  // pass in VM mode. This implementation is retained for fallback mode and
-  // protects strings/comments/property names from accidental replacement.
-  const reserved=new Set([
-    'and','break','continue','do','else','elseif','end','false','for',
-    'function','if','in','local','nil','not','or','repeat','return',
-    'then','true','type','until','while'
-  ]);
-  const saved=[];
-  let masked='',i=0;
-
-  function save(raw){const key='\u0001'+saved.length+'\u0002';saved.push(raw);masked+=key;}
-
-  while(i<code.length){
-    const c=code[i],n=code[i+1];
-
-    if(c==='"'||c==="'"){
-      const q=c;let j=i+1,esc=false;
-      while(j<code.length){
-        const x=code[j];
-        if(esc){esc=false;j++;continue;}
-        if(x==='\\'){esc=true;j++;continue;}
-        if(x===q){j++;break;}
-        j++;
-      }
-      save(code.slice(i,j));i=j;continue;
-    }
-
-    if(c==='-'&&n==='-'){
-      if(code[i+2]==='['&&code[i+3]==='['){
-        let j=i+4;
-        while(j<code.length&&!(code[j]===']'&&code[j+1]===']'))j++;
-        j=Math.min(code.length,j+2);save(code.slice(i,j));i=j;
+  function parseTable(){
+    eat('{');const fields=[];
+    while(!check('}')){
+      if(check('[')&&peek(1).t!=='['){
+        next();const key=parseExpr();eat(']');eat('=');const val=parseExpr();
+        fields.push({t:'ifield',key,val});
+      }else if(check('NAME')&&peek(1).t==='='){
+        const k=next().v;next();const val=parseExpr();fields.push({t:'nfield',key:k,val});
       }else{
-        let j=i+2;while(j<code.length&&code[j]!=='\n'&&code[j]!=='\r')j++;
-        save(code.slice(i,j));i=j;
+        fields.push({t:'vfield',val:parseExpr()});
       }
-      continue;
+      if(!match(',')&&!match(';'))break;
     }
-
-    masked+=c;i++;
+    eat('}');return {t:'table',fields};
   }
 
-  // Collect names declared by local declarations. We deliberately do not
-  // attempt a fake global scope analysis: generated fallback code is safest
-  // when only clearly declared locals are renamed.
-  const names=new Set();
-  const decl=/\blocal\s+(?:function\s+)?([A-Za-z_]\w*)/g;
-  let m;
-  while((m=decl.exec(masked))){
-    if(!reserved.has(m[1]))names.add(m[1]);
+  return parseBlock();
+}
+
+// ── Emitter ───────────────────────────────────────────────────────────────
+function emitBlock(block,ind){
+  return block.body.filter(Boolean).map(s=>emitStat(s,ind)).join('\n');
+}
+
+function emitStat(node,ind){
+  const I='  '.repeat(ind);
+  const I1='  '.repeat(ind+1);
+  switch(node.t){
+    case 'local':{
+      let s=I+'local '+node.names.join(', ');
+      if(node.vals.length)s+=' = '+node.vals.map(v=>emitE(v,ind)).join(', ');
+      return s;
+    }
+    case 'localfunc':return I+'local function '+node.name+emitFn(node.fn,ind);
+    case 'funcstat':{
+      const chain=node.chain;
+      const name=node.method?chain.slice(0,-1).join('.')+':'+chain[chain.length-1]:chain.join('.');
+      return I+'function '+name+emitFn(node.fn,ind);
+    }
+    case 'assign':{
+      const OMAP={'+=':'+=','-=':'-=','*=':'*=','/=':'/=','%=':'%=','..=':'..='};
+      return I+node.targets.map(t=>emitE(t,ind)).join(', ')+' '+(OMAP[node.op]||'=')+' '+node.vals.map(v=>emitE(v,ind)).join(', ');
+    }
+    case 'callstat':return I+emitE(node.expr,ind);
+    case 'if':{
+      let s=I+'if '+emitE(node.cond,ind)+' then\n'+emitBlock(node.body,ind+1);
+      for(const ei of node.elseifs)s+='\n'+I+'elseif '+emitE(ei.cond,ind)+' then\n'+emitBlock(ei.body,ind+1);
+      if(node.els)s+='\n'+I+'else\n'+emitBlock(node.els,ind+1);
+      return s+'\n'+I+'end';
+    }
+    case 'while':return I+'while '+emitE(node.cond,ind)+' do\n'+emitBlock(node.body,ind+1)+'\n'+I+'end';
+    case 'repeat':return I+'repeat\n'+emitBlock(node.body,ind+1)+'\n'+I+'until '+emitE(node.cond,ind);
+    case 'do':return I+'do\n'+emitBlock(node.body,ind+1)+'\n'+I+'end';
+    case 'fornum':{
+      let s=I+'for '+node.name+' = '+emitE(node.start,ind)+', '+emitE(node.limit,ind);
+      if(node.step)s+=', '+emitE(node.step,ind);
+      return s+' do\n'+emitBlock(node.body,ind+1)+'\n'+I+'end';
+    }
+    case 'forgen':return I+'for '+node.names.join(', ')+' in '+node.iters.map(v=>emitE(v,ind)).join(', ')+' do\n'+emitBlock(node.body,ind+1)+'\n'+I+'end';
+    case 'return':return I+'return'+(node.vals.length?' '+node.vals.map(v=>emitE(v,ind)).join(', '):'');
+    case 'break':return I+'break';
+    case 'continue':return I+'continue';
+    case 'label':return I+'::'+node.name+'::';
+    case 'goto':return I+'goto '+node.name;
+    default:return I+'-- unknown '+node.t;
+  }
+}
+
+function emitFn(fn,ind){
+  const p=fn.vararg?[...fn.params,'...']:fn.params;
+  return '('+p.join(', ')+')\n'+emitBlock(fn.body,ind+1)+'\n'+'  '.repeat(ind)+'end';
+}
+
+function emitE(node,ind){
+  if(!node)return 'nil';
+  switch(node.t){
+    case 'num':return node.v;
+    case 'str':return luaStr(node.v);
+    case 'bool':return node.v?'true':'false';
+    case 'nil':return 'nil';
+    case 'vararg':return '...';
+    case 'name':return node.v;
+    case 'rawexpr':return node.v; // pre-rendered expression
+    case 'paren':return '('+emitE(node.expr,ind)+')';
+    case 'binop':{
+      const L=emitE(node.left,ind);const R=emitE(node.right,ind);
+      const op=node.op;
+      // wrap sub-expressions if needed to preserve precedence
+      return L+' '+op+' '+R;
+    }
+    case 'unop':{
+      const op=node.op;const sep=(op==='not'||op==='#')?' ':'';
+      return op+sep+emitE(node.operand,ind);
+    }
+    case 'field':return emitE(node.obj,ind)+'.'+node.field;
+    case 'index':return emitE(node.obj,ind)+'['+emitE(node.key,ind)+']';
+    case 'call':return emitE(node.fn,ind)+'('+node.args.map(a=>emitE(a,ind)).join(', ')+')';
+    case 'methodcall':return emitE(node.obj,ind)+':'+node.method+'('+node.args.map(a=>emitE(a,ind)).join(', ')+')';
+    case 'func':return 'function'+emitFn(node,ind);
+    case 'table':{
+      if(!node.fields.length)return '{}';
+      const items=node.fields.map(f=>{
+        if(f.t==='ifield')return '['+emitE(f.key,ind)+']='+emitE(f.val,ind);
+        if(f.t==='nfield')return f.key+'='+emitE(f.val,ind);
+        return emitE(f.val,ind);
+      });
+      return '{'+items.join(', ')+'}';
+    }
+    default:return '-- unknown expr '+node.t;
+  }
+}
+
+// ── Pass 1: Rename ────────────────────────────────────────────────────────
+function passRename(ast){
+  function scope(parent=null){return {vars:{},parent};}
+  function decl(sc,name){if(!sc.vars[name])sc.vars[name]=id();return sc.vars[name];}
+  function resolve(sc,name){let s=sc;while(s){if(s.vars[name])return s.vars[name];s=s.parent;}return name;}
+
+  function block(blk,sc){
+    // hoist declarations
+    for(const s of blk.body){
+      if(!s)continue;
+      if(s.t==='local')for(const n of s.names)decl(sc,n);
+      if(s.t==='localfunc')decl(sc,s.name);
+    }
+    for(const s of blk.body)if(s)stat(s,sc);
   }
 
-  // Handle `local a,b,c = ...` declarations.
-  const multi=/\blocal\s+([^;\n]*)/g;
-  while((m=multi.exec(masked))){
-    const lhs=m[1].split('=')[0];
-    for(const item of lhs.split(',')){
-      const q=item.match(/^\s*([A-Za-z_]\w*)/);
-      if(q&&!reserved.has(q[1]))names.add(q[1]);
+  function stat(node,sc){
+    if(!node)return;
+    switch(node.t){
+      case 'local':
+        node.vals=node.vals.map(v=>expr(v,sc));
+        node.names=node.names.map(n=>sc.vars[n]||n);
+        break;
+      case 'localfunc':
+        node.name=sc.vars[node.name]||node.name;
+        node.fn=fnbody(node.fn,sc);break;
+      case 'funcstat':node.fn=fnbody(node.fn,sc);break;
+      case 'assign':
+        node.targets=node.targets.map(t=>expr(t,sc));
+        node.vals=node.vals.map(v=>expr(v,sc));break;
+      case 'callstat':node.expr=expr(node.expr,sc);break;
+      case 'if':
+        node.cond=expr(node.cond,sc);block(node.body,scope(sc));
+        for(const ei of node.elseifs){ei.cond=expr(ei.cond,sc);block(ei.body,scope(sc));}
+        if(node.els)block(node.els,scope(sc));break;
+      case 'while':node.cond=expr(node.cond,sc);block(node.body,scope(sc));break;
+      case 'repeat':{const bs=scope(sc);block(node.body,bs);node.cond=expr(node.cond,bs);break;}
+      case 'do':block(node.body,scope(sc));break;
+      case 'fornum':{
+        node.start=expr(node.start,sc);node.limit=expr(node.limit,sc);
+        if(node.step)node.step=expr(node.step,sc);
+        const bs=scope(sc);decl(bs,node.name);node.name=bs.vars[node.name];
+        block(node.body,bs);break;
+      }
+      case 'forgen':{
+        node.iters=node.iters.map(v=>expr(v,sc));
+        const bs=scope(sc);
+        node.names=node.names.map(n=>{decl(bs,n);return bs.vars[n]||n;});
+        block(node.body,bs);break;
+      }
+      case 'return':node.vals=node.vals.map(v=>expr(v,sc));break;
     }
   }
 
-  const map=Object.create(null);
-  for(const name of names)map[name]=id();
-
-  let out='',last=0;
-  const ident=/[A-Za-z_]\w*/g;
-  while((m=ident.exec(masked))){
-    const name=m[0],pos=m.index;
-    out+=masked.slice(last,pos);
-    const prev=masked[pos-1];
-    // `obj.field` and `obj:method` member names are not variables.
-    out+=(map[name]&&prev!=='.'&&prev!==':')?map[name]:name;
-    last=pos+name.length;
+  function expr(node,sc){
+    if(!node)return node;
+    switch(node.t){
+      case 'name':return {t:'name',v:resolve(sc,node.v)};
+      case 'binop':return {...node,left:expr(node.left,sc),right:expr(node.right,sc)};
+      case 'unop':return {...node,operand:expr(node.operand,sc)};
+      case 'paren':return {t:'paren',expr:expr(node.expr,sc)};
+      case 'field':return {t:'field',obj:expr(node.obj,sc),field:node.field};
+      case 'index':return {t:'index',obj:expr(node.obj,sc),key:expr(node.key,sc)};
+      case 'call':return {t:'call',fn:expr(node.fn,sc),args:node.args.map(a=>expr(a,sc))};
+      case 'methodcall':return {t:'methodcall',obj:expr(node.obj,sc),method:node.method,args:node.args.map(a=>expr(a,sc))};
+      case 'func':return fnbody(node,sc);
+      case 'table':
+        node.fields=node.fields.map(f=>{
+          if(f.t==='ifield')return {...f,key:expr(f.key,sc),val:expr(f.val,sc)};
+          if(f.t==='nfield')return {...f,val:expr(f.val,sc)};
+          return {t:'vfield',val:expr(f.val,sc)};
+        });return node;
+      default:return node;
+    }
   }
-  out+=masked.slice(last);
 
-  return out.replace(/\u0001(\d+)\u0002/g,(_,n)=>saved[Number(n)]);
+  function fnbody(fn,sc){
+    const inner=scope(sc);
+    for(const p of fn.params)decl(inner,p);
+    const newFn={...fn,params:fn.params.map(p=>inner.vars[p]||p)};
+    const newBody=JSON.parse(JSON.stringify(fn.body));
+    newFn.body=newBody;block(newFn.body,inner);
+    return newFn;
+  }
+
+  block(ast,scope());
+  return ast;
 }
-function L_junk(code,intensity){
-  const lines=code.split('\n'),out=[];
-  const ops=[
-    ()=>`local ${id(5)}=pcall(function()return 0 end);`,
-    ()=>`local ${id(5)}=type(_G)=="table" and true or false;`,
-    ()=>`local ${id(5)}=rawget({},1)==nil;`,
-    ()=>`local function ${id(5)}()end;`,
-    ()=>`local ${id(5)}=bit32 and bit32.band(${rndI(1,9)},0xFF) or 0;`,
-  ];
-  const prob=intensity*0.07;
-  for(const ln of lines){out.push(ln);if(ln.trim().length>3&&Math.random()<prob)out.push(ops[rndI(0,ops.length-1)]());}
-  return out.join('\n');
+
+// ── Pass 2: String encryption ─────────────────────────────────────────────
+function passStrings(ast){
+  const KEY=rnd(3,250);
+  const dFn=id(10);
+  const kV=id(4),sV=id(3),rV=id(3),iV=id(3);
+
+  function encStr(s){
+    const bytes=[];
+    for(let i=0;i<s.length;i++){
+      const cp=s.charCodeAt(i);
+      if(cp<=0x7F)bytes.push(cp);
+      else if(cp<=0x7FF){bytes.push(0xC0|(cp>>6));bytes.push(0x80|(cp&0x3F));}
+      else{bytes.push(0xE0|(cp>>12));bytes.push(0x80|((cp>>6)&0x3F));bytes.push(0x80|(cp&0x3F));}
+    }
+    let out='"';
+    for(const b of bytes)out+='\\'+((b^KEY)&0xFF);
+    return out+'"';
+  }
+
+  const decSrc='local '+dFn+'=(function()\nlocal '+kV+'='+KEY+'\nreturn function('+sV+')\n'+
+    'local '+rV+'={}\nfor '+iV+'=1,#'+sV+' do\n'+
+    rV+'['+iV+']=string.char(bit32.bxor(string.byte('+sV+','+iV+'),'+kV+'))\n'+
+    'end\nreturn table.concat('+rV+')\nend\nend)()';
+
+  function walkBlock(blk){blk.body=blk.body.filter(Boolean).map(walkStat);}
+  function walkStat(n){
+    if(!n)return n;
+    switch(n.t){
+      case 'local':n.vals=n.vals.map(walkExpr);break;
+      case 'localfunc':walkBlock(n.fn.body);break;
+      case 'funcstat':walkBlock(n.fn.body);break;
+      case 'assign':n.targets=n.targets.map(walkExpr);n.vals=n.vals.map(walkExpr);break;
+      case 'callstat':n.expr=walkExpr(n.expr);break;
+      case 'if':n.cond=walkExpr(n.cond);walkBlock(n.body);
+        n.elseifs.forEach(e=>{e.cond=walkExpr(e.cond);walkBlock(e.body);});
+        if(n.els)walkBlock(n.els);break;
+      case 'while':n.cond=walkExpr(n.cond);walkBlock(n.body);break;
+      case 'repeat':walkBlock(n.body);n.cond=walkExpr(n.cond);break;
+      case 'do':walkBlock(n.body);break;
+      case 'fornum':n.start=walkExpr(n.start);n.limit=walkExpr(n.limit);
+        if(n.step)n.step=walkExpr(n.step);walkBlock(n.body);break;
+      case 'forgen':n.iters=n.iters.map(walkExpr);walkBlock(n.body);break;
+      case 'return':n.vals=n.vals.map(walkExpr);break;
+    }
+    return n;
+  }
+  function walkExpr(n){
+    if(!n)return n;
+    switch(n.t){
+      case 'str':return {t:'rawexpr',v:dFn+'('+encStr(n.v)+')'};
+      case 'binop':return {...n,left:walkExpr(n.left),right:walkExpr(n.right)};
+      case 'unop':return {...n,operand:walkExpr(n.operand)};
+      case 'paren':return {t:'paren',expr:walkExpr(n.expr)};
+      case 'field':return {...n,obj:walkExpr(n.obj)};
+      case 'index':return {...n,obj:walkExpr(n.obj),key:walkExpr(n.key)};
+      case 'call':return {...n,fn:walkExpr(n.fn),args:n.args.map(walkExpr)};
+      case 'methodcall':return {...n,obj:walkExpr(n.obj),args:n.args.map(walkExpr)};
+      case 'func':walkBlock(n.body);return n;
+      case 'table':n.fields=n.fields.map(f=>{
+        if(f.t==='ifield')return {...f,key:walkExpr(f.key),val:walkExpr(f.val)};
+        if(f.t==='nfield')return {...f,val:walkExpr(f.val)};
+        return {...f,val:walkExpr(f.val)};
+      });return n;
+      default:return n;
+    }
+  }
+
+  walkBlock(ast);
+  return {ast,decSrc,dFn};
 }
-function L_dead(code){
-  const lines=code.split('\n'),out=[];
+
+// ── Pass 3: Number obfuscation ────────────────────────────────────────────
+function passNumbers(ast){
+  function obf(v){
+    const n=Number(v);
+    if(!Number.isFinite(n)||n!==Math.floor(n)||Math.abs(n)>0xFFFFFF)return null;
+    const u=n>>>0;const k=rnd(1,0xFFFF);
+    return 'bit32.bxor('+(u^k)+','+k+')';
+  }
+  function wb(blk){blk.body=blk.body.filter(Boolean).map(ws);}
+  function ws(n){
+    if(!n)return n;
+    switch(n.t){
+      case 'local':n.vals=n.vals.map(we);break;
+      case 'localfunc':wb(n.fn.body);break;
+      case 'funcstat':wb(n.fn.body);break;
+      case 'assign':n.vals=n.vals.map(we);break;
+      case 'callstat':n.expr=we(n.expr);break;
+      case 'if':n.cond=we(n.cond);wb(n.body);n.elseifs.forEach(e=>{e.cond=we(e.cond);wb(e.body);});if(n.els)wb(n.els);break;
+      case 'while':n.cond=we(n.cond);wb(n.body);break;
+      case 'repeat':wb(n.body);n.cond=we(n.cond);break;
+      case 'do':wb(n.body);break;
+      case 'fornum':n.start=we(n.start);n.limit=we(n.limit);if(n.step)n.step=we(n.step);wb(n.body);break;
+      case 'forgen':n.iters=n.iters.map(we);wb(n.body);break;
+      case 'return':n.vals=n.vals.map(we);break;
+    }
+    return n;
+  }
+  function we(n){
+    if(!n)return n;
+    switch(n.t){
+      case 'num':{if(Math.random()<0.55){const o=obf(n.v);if(o)return {t:'rawexpr',v:o};}return n;}
+      case 'binop':return {...n,left:we(n.left),right:we(n.right)};
+      case 'unop':return {...n,operand:we(n.operand)};
+      case 'paren':return {t:'paren',expr:we(n.expr)};
+      case 'field':return {...n,obj:we(n.obj)};
+      case 'index':return {...n,obj:we(n.obj),key:we(n.key)};
+      case 'call':return {...n,fn:we(n.fn),args:n.args.map(we)};
+      case 'methodcall':return {...n,obj:we(n.obj),args:n.args.map(we)};
+      case 'func':wb(n.body);return n;
+      case 'table':n.fields=n.fields.map(f=>({...f,val:we(f.val)}));return n;
+      default:return n;
+    }
+  }
+  wb(ast);
+}
+
+// ── Pass 4-6: Source-level transforms ────────────────────────────────────
+function isSafeLine(line,nextLine){
+  const t=line.trim(),nx=(nextLine||'').trim();
+  return t.length>3&&!t.startsWith('--')
+    &&!/\bthen\b/.test(t)
+    &&!/\bdo\s*$/.test(t)
+    &&!/^(else|elseif|end|until)/.test(t)
+    &&!/^(elseif|else|end|until)/.test(nx);
+}
+
+function passDeadCode(code){
   const preds=[
-    ()=>`if rawequal(nil,false) then local ${id(5)}=0 end`,
-    ()=>`if type(nil)=="number" then local ${id(5)}=0 end`,
-    ()=>`if tostring(0)=="true" then local ${id(5)}=0 end`,
-    ()=>`if rawget({},1)~=nil then local ${id(5)}=0 end`,
+    ()=>'if ('+rnd(1,9)+'>999) then local '+id(4)+'='+rnd(0,9)+' end',
+    ()=>'if (bit32.band(0,1)==1) then local '+id(4)+'=nil end',
+    ()=>'if (type(nil)=="number") then local '+id(4)+'=false end',
+    ()=>'if (rawequal(1,2)) then local '+id(4)+'="" end',
+    ()=>'if (select("#")<-1) then local '+id(4)+'={} end',
   ];
-  for(const ln of lines){out.push(ln);if(ln.trim().length>4&&Math.random()<0.18)out.push(preds[rndI(0,preds.length-1)]());}
+  const lines=code.split('\n');const out=[];
+  for(let i=0;i<lines.length;i++){
+    out.push(lines[i]);
+    if(isSafeLine(lines[i],lines[i+1])&&Math.random()<0.12){
+      const ind=lines[i].match(/^(\s*)/)[1];
+      out.push(ind+preds[rnd(0,preds.length-1)]());
+    }
+  }
   return out.join('\n');
 }
-function L_poly(code){
-  // Safe polymorphic string transform.
-  // Only plain string literals are encoded. Escaped literals are preserved
-  // because rewriting their source text can change Luau escape semantics.
-  const KEY=rndI(5,250);
-  const fn=id(10),kv=id(),arr=id(4),iN=id(4),ch=id(4);
-  const prefix=`local ${kv}=${KEY};local function ${fn}(s)local ${arr}={};for ${iN}=1,#s do ${arr}[${iN}]=string.char(bit32.bxor(string.byte(s,${iN}),${kv})) end;return table.concat(${arr}) end\n`;
 
-  let out='',i=0;
-  while(i<code.length){
-    if(code[i]==='"'){
-      let j=i+1,esc=false;
-      while(j<code.length){
-        const c=code[j];
-        if(esc){esc=false;j++;continue;}
-        if(c==='\\'){esc=true;j++;continue;}
-        if(c==='"'){j++;break;}
-        j++;
-      }
-      const raw=code.slice(i,j);
-      if(raw.length>=2&&!raw.includes('\\')){
-        const body=raw.slice(1,-1);
-        if(body.length&&body.length<=300){
-          let enc='';
-          for(let k=0;k<body.length;k++)enc+=String.fromCharCode(body.charCodeAt(k)^KEY);
-          // Lua source needs the encoded bytes represented as decimal escapes.
-          const escaped=[...enc].map(x=>'\\'+x.charCodeAt(0)).join('');
-          out+=`${fn}("${escaped}")`;
-        }else out+=raw;
-      }else out+=raw;
-      i=j;continue;
+function passJunk(code){
+  const ops=[
+    ()=>'local '+id(5)+'=tostring('+rnd(1,999)+')',
+    ()=>'local '+id(5)+'=type({})==\"table\"',
+    ()=>'local '+id(5)+'=bit32.bxor('+rnd(1,15)+','+rnd(1,15)+')',
+    ()=>'local '+id(5)+'=(function() return '+rnd(0,1)+' end)()',
+    ()=>{const t=id(5);return 'local '+t+'={}\nlocal '+id(5)+'=#'+t;},
+    ()=>'local '+id(5)+'=select("#")',
+    ()=>'local '+id(5)+'=math.max(0,0)',
+  ];
+  const lines=code.split('\n');const out=[];
+  for(let i=0;i<lines.length;i++){
+    out.push(lines[i]);
+    if(isSafeLine(lines[i],lines[i+1])&&Math.random()<0.10){
+      const ind=lines[i].match(/^(\s*)/)[1];
+      out.push(ind+ops[rnd(0,ops.length-1)]());
     }
-    if(code[i]==="'" ){
-      // Leave single-quoted literals untouched; the compiler-generated VM
-      // primarily uses double-quoted strings and this avoids parser surprises.
-      let j=i+1,esc=false;
-      while(j<code.length){
-        const c=code[j];
-        if(esc){esc=false;j++;continue;}
-        if(c==='\\'){esc=true;j++;continue;}
-        if(c==="'"){j++;break;}
-        j++;
-      }
-      out+=code.slice(i,j);i=j;continue;
-    }
-    out+=code[i++];
   }
-  return prefix+out;
+  return out.join('\n');
 }
-function L_scope(code){
-  let r=code;for(let i=0;i<3;i++){const a=id(),b=id();r=`do\nlocal ${a}=${rndI(1,999)};local ${b}=nil;\n${r}\n${a}=nil;\nend`;}
-  return r;
-}
-function L_flow(code){
-  const sv=id(),tv=id(),dv=id();
-  return`local ${sv}=1;local ${dv}=false;local ${tv};${tv}=function()\n`+code+`\n${dv}=true end;while not ${dv} do ${tv}();${sv}=${sv}+1;if ${sv}>99999 then break end end;`;
-}
-function L_wrap(code){
-  const tag='@_'+Math.random().toString(36).slice(2,9);
-  return`local __L=(loadstring or load);assert(__L("${luaEsc(code)}","${tag}"))()`;
-}
-function L_bytes(code){
-  const arr=id(),iv=id(4),cv=id(4);
-  const bytes=[];for(let i=0;i<code.length;i++)bytes.push(code.charCodeAt(i));
-  const chunks=[];for(let i=0;i<bytes.length;i+=300)chunks.push(bytes.slice(i,i+300).join(','));
-  return`local ${arr}={${chunks.join(',')}};local ${cv}={};for ${iv}=1,#${arr} do ${cv}[${iv}]=string.char(${arr}[${iv}]) end;local __L=(loadstring or load);assert(__L(table.concat(${cv})))()`;
-}
-function L_fallbackFull(code){
-  // v4-style full obfuscation for fallback mode (no VM)
-  code=L_var(code);
-  code=code.replace(/"((?:[^"\\]|\\.)*)"/g,(m,s)=>{if(!s)return'""';return'('+[...s].map(c=>`string.char(${c.charCodeAt(0)})`).join('..')+')';});
-  code=code.replace(/\b(\d+)\b/g,(m,n)=>{const v=parseInt(n);if(isNaN(v)||v>99999)return m;const a=rndI(1,300);return`(${v+a}-${a})`;});
+
+function passScope(code){
+  for(let i=0;i<3;i++){
+    const a=id(),b=id();
+    code='do\nlocal '+a+'='+rnd(1,9999)+'\nlocal '+b+'=type(nil)\n'+code+'\n'+a+'=nil\nend';
+  }
   return code;
 }
-function pad(code,target){
-  if(!target||target<=0||code.length>=target)return code;
-  const names=['getService','waitForChild','findPlayer','checkBounds','updateState','clampValue','fetchData'];
-  let padding='';
-  while(code.length+padding.length<target){
-    const f=names[rndI(0,names.length-1)]+id(3);
-    const a=id(4),b=id(4);
-    const stmt=`local function ${f}(${a},${b}) if type(${a})~="nil" then return ${b} end return nil end\n`;
-    padding+=stmt;
-  }
-  // Never slice a Lua statement in half. A valid output is more important
-  // than hitting targetBytes exactly.
-  return padding+code;
-}
-function compact(c){return c.replace(/\r?\n/g,' ').replace(/\t/g,' ').replace(/ {2,}/g,' ').trim();}
 
-// ══════════════════════════════════════════════════════════════════════════════
-// MAIN
-// ══════════════════════════════════════════════════════════════════════════════
-function fmtB(b){if(b>=1073741824)return(b/1073741824).toFixed(2)+' GB';if(b>=1048576)return(b/1048576).toFixed(2)+' MB';if(b>=1024)return(b/1024).toFixed(2)+' KB';return b+' B';}
+function passWatermark(code){
+  const wm='ZumHub/DoggoJr';
+  const wmB=Array.from(wm).map(c=>c.charCodeAt(0));
+  const key=rnd(10,200);const enc=wmB.map(b=>b^key);
+  const wV=id(8),kV=id(4),iV=id(4),rV=id(8);
+  const wmark='local '+wV+'={'+enc.join(',')+'}\nlocal '+kV+'='+key+'\n'+
+    'if ('+wV+' and #'+wV+'<0) then\n'+
+    '  local '+rV+'={}\n'+
+    '  for '+iV+'=1,#'+wV+' do '+rV+'['+iV+']=string.char(bit32.bxor('+wV+'['+iV+'],'+kV+')) end\n'+
+    '  print(table.concat('+rV+'))\nend';
+  return wmark+'\n'+code;
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────
+function obfuscate(src,opts={}){
+  resetIds();
+  const intensity=opts.intensity||3;
+
+  const ast=parse(src);
+  passRename(ast);
+  const {ast:ast2,decSrc}=passStrings(ast);
+  if(intensity>=2)passNumbers(ast2);
+
+  let code=emitBlock(ast2,0);
+  code=decSrc+'\n'+code;
+
+  if(intensity>=2)code=passDeadCode(code);
+  if(intensity>=3)code=passJunk(code);
+  if(intensity>=2)code=passScope(code);
+  code=passWatermark(code);
+  code='--DoggoJr Is Here\n'+code;
+  return code;
+}
+
+if(typeof module!=='undefined')module.exports={obfuscate,parse,emitBlock,emitE,resetIds};
